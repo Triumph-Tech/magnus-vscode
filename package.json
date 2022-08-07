@@ -95,16 +95,19 @@
       ],
       "view/item/context": [
         {
-          "command": "rockrms-interface.refreshFolder",
-          "when": "view == rockrms-interface-servers && viewItem =~ /^server_/"
-        },
-        {
-          "command": "rockrms-interface.refreshFolder",
-          "when": "view == rockrms-interface-servers && viewItem =~ /^folder_/"
-        },
-        {
           "command": "rockrms-interface.removeServer",
+          "group": "section1",
           "when": "view == rockrms-interface-servers && viewItem =~ /^server_/"
+        },
+        {
+          "command": "rockrms-interface.refreshFolder",
+          "group": "section9",
+          "when": "view == rockrms-interface-servers && viewItem =~ /^server_/"
+        },
+        {
+          "command": "rockrms-interface.refreshFolder",
+          "group": "section9",
+          "when": "view == rockrms-interface-servers && viewItem =~ /^folder_/"
         }
       ]
     }
