@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as api from "./api";
-import { saveCredentials } from "./auth";
+import { deleteCredentials, saveCredentials } from "./auth";
 import { Events } from "./events";
 
 /**
@@ -30,8 +30,9 @@ export class Commands implements vscode.Disposable {
         this.context = context;
         this.events = events;
 
-        context.subscriptions.push(vscode.commands.registerCommand("rockrms-interface.addServer", () => this.addServer()));
+        context.subscriptions.push(vscode.commands.registerCommand("rockrms-interface.addServer", this.addServer, this));
         context.subscriptions.push(vscode.commands.registerCommand("rockrms-interface.refreshFolder", this.refreshFolder, this));
+        context.subscriptions.push(vscode.commands.registerCommand("rockrms-interface.removeServer", this.removeServer, this));
     }
 
     public dispose(): void {
@@ -47,7 +48,6 @@ export class Commands implements vscode.Disposable {
      * known servers.
      */
     private async addServer(): Promise<void> {
-        console.log("addServer");
         const serverUrl = await this.getAddServerUrl();
 
         if (!serverUrl) {
@@ -99,6 +99,35 @@ export class Commands implements vscode.Disposable {
      */
     private refreshFolder(node: ITreeNode): void {
         this.events.emitRefreshFolder(node);
+    }
+
+    /**
+     * Called when the person wants to remove a server.
+     *
+     * @param node The server node to be removed.
+     */
+    private async removeServer(node: ITreeNode): Promise<void> {
+        const confirmation = await vscode.window.showWarningMessage(`Are you sure you want to remove the server at ${node.serverUrl}?`, {
+            modal: true
+        }, { title: "Yes" }, { title: "No", isCloseAffordance: true });
+
+        if (confirmation?.title !== "Yes") {
+            return;
+        }
+
+        const knownServers = this.context.globalState.get<string[]>("KnownServers", []);
+        const serverIndex = knownServers.findIndex(s => s === node.serverUrl);
+
+        if (serverIndex === -1) {
+            return;
+        }
+
+        knownServers.splice(serverIndex, 1);
+
+        this.context.globalState.update("KnownServers", knownServers);
+        this.events.emitServerAdded();
+
+        await deleteCredentials(node.serverUrl);
     }
 
     // #endregion

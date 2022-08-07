@@ -24,6 +24,7 @@ export class RockTreeDataProvider implements vscode.Disposable, vscode.TreeDataP
         context.subscriptions.push(this);
 
         this.events.onServerAdded(this.onKnownServersChanged.bind(this));
+        this.events.onServerRemoved(this.onKnownServersChanged.bind(this));
         this.events.onRefreshFolder(this.onRefreshFolder.bind(this));
     }
 
@@ -55,7 +56,7 @@ export class RockTreeDataProvider implements vscode.Disposable, vscode.TreeDataP
                 arguments: [element.resource],
                 title: "Open File"
             },
-            contextValue: element.itemDescriptor.isFolder ? "folder" : "file"
+            contextValue: this.getContextValue(element)
         };
     }
 
@@ -72,7 +73,8 @@ export class RockTreeDataProvider implements vscode.Disposable, vscode.TreeDataP
                 return {
                     serverUrl: element.serverUrl,
                     resource: vscode.Uri.parse(`${customUriScheme}://${serverUri.authority}${item.uri}`),
-                    itemDescriptor: item
+                    itemDescriptor: item,
+                    isServer: false
                 };
             });
         }
@@ -92,6 +94,7 @@ export class RockTreeDataProvider implements vscode.Disposable, vscode.TreeDataP
 
                 nodes.push({
                     serverUrl: server,
+                    isServer: true,
                     resource: vscode.Uri.from({
                         scheme: customUriScheme,
                         authority: uri.authority
@@ -111,6 +114,35 @@ export class RockTreeDataProvider implements vscode.Disposable, vscode.TreeDataP
         }
 
         return nodes;
+    }
+
+    /**
+     * Get the context value to use for the tree node.
+     *
+     * @param node The node whose context value should be calculated.
+     *
+     * @returns A string that should be passed to the contextValue of the tree item.
+     */
+    private getContextValue(node: ITreeNode): string {
+        const type = node.isServer
+            ? "server"
+            : (node.itemDescriptor.isFolder ? "folder" : "file");
+
+        let context = `${type}_`;
+
+        if (node.itemDescriptor.remoteViewUri) {
+            context = `${context}canView_`;
+        }
+
+        if (node.itemDescriptor.remoteEditUri) {
+            context = `${context}canEdit_`;
+        }
+
+        if (node.itemDescriptor.dropUploadUri) {
+            context = `${context}canUpload_`;
+        }
+
+        return context;
     }
 
     /**

@@ -29,6 +29,12 @@
         "icon": "$(add)"
       },
       {
+        "command": "rockrms-interface.removeServer",
+        "title": "Remove Server",
+        "category": "Rock RMS",
+        "icon": "$(trash)"
+      },
+      {
         "command": "rockrms-interface.refreshFolder",
         "title": "Refresh",
         "category": "Rock RMS",
@@ -74,6 +80,10 @@
         {
           "command": "rockrms-interface.refreshFile",
           "when": "false"
+        },
+        {
+          "command": "rockrms-interface.removeServer",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -86,7 +96,15 @@
       "view/item/context": [
         {
           "command": "rockrms-interface.refreshFolder",
-          "when": "view == rockrms-interface-servers && viewItem == folder"
+          "when": "view == rockrms-interface-servers && viewItem =~ /^server_/"
+        },
+        {
+          "command": "rockrms-interface.refreshFolder",
+          "when": "view == rockrms-interface-servers && viewItem =~ /^folder_/"
+        },
+        {
+          "command": "rockrms-interface.removeServer",
+          "when": "view == rockrms-interface-servers && viewItem =~ /^server_/"
         }
       ]
     }

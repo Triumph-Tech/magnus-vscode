@@ -8,6 +8,9 @@ enum EventName {
     /** A server has been added to the list of known servers. */
     ServerAdded = "serverAdded",
 
+    /** A server has been removed from the list of known servers. */
+    ServerRemoved = "serverRemoved",
+
     /** A folder should be refreshed. */
     RefreshFolder = "refreshFolder"
 }
@@ -45,6 +48,16 @@ export class Events implements Disposable {
     }
 
     /**
+     * Subscribe to the server removed event. These callbacks are called
+     * when the person removes an existing server to the list of known servers.
+     *
+     * @param listener The callback to be called.
+     */
+     public onServerRemoved(listener: (() => void)): void {
+        this.eventEmitter?.on(EventName.ServerRemoved, listener);
+    }
+
+    /**
      * Subscribe to the refresh folder event. These callbacks are called
      * when the person activites the Refresh command for a folder.
      *
@@ -60,6 +73,14 @@ export class Events implements Disposable {
      */
     public emitServerAdded(): void {
         this.eventEmitter?.emit(EventName.ServerAdded);
+    }
+
+    /**
+     * Emit the server removed event. This should be called when an existing
+     * server is removed from the list of known servers.
+     */
+     public emitServerRemoved(): void {
+        this.eventEmitter?.emit(EventName.ServerRemoved);
     }
 
     /**

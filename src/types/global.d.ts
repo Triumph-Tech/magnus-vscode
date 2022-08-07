@@ -35,5 +35,7 @@ declare global {
         resource: Uri;
 
         itemDescriptor: IItemDescriptor;
+
+        isServer: boolean;
     };
 }
