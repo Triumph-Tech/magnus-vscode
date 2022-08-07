@@ -1,15 +1,17 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
+import { Commands } from "./commands";
+import { Events } from "./events";
 
-import { RockExplorer } from "./rockExplorer";
+import { RockTreeDataProvider } from "./rockTreeDataProvider";
 
-export function activate(context: vscode.ExtensionContext) {
-	context.subscriptions.push(vscode.commands.registerCommand('rockrms-interface.addServer', () => {
-		vscode.window.showInformationMessage('Hello World from RockRMS Interface!');
-	}));
+export function activate(context: vscode.ExtensionContext): void {
+    const events = new Events();
 
-	new RockExplorer(context);
+    context.subscriptions.push(events);
+    context.subscriptions.push(new RockTreeDataProvider(context, events));
+    context.subscriptions.push(new Commands(context, events));
 }
 
-export function deactivate() {
-
+export function deactivate(): void {
+    /* future use */
 }

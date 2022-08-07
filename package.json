@@ -16,7 +16,7 @@
   ],
   "activationEvents": [
     "onView:rockrms-interface-servers",
-    "onFileSystem:rockrms",
+    "onFileSystem:ttrockiface",
     "onCommand:rockrms-interface.addServer"
   ],
   "main": "./out/extension.js",
@@ -54,7 +54,8 @@
       "rockrms-interface": [
         {
           "id": "rockrms-interface-servers",
-          "name": "RockRMS Servers"
+          "name": "Rock Servers",
+          "type": "tree"
         }
       ]
     },
@@ -85,13 +86,7 @@
       "view/item/context": [
         {
           "command": "rockrms-interface.refreshFolder",
-          "group": "inline",
           "when": "view == rockrms-interface-servers && viewItem == folder"
-        },
-        {
-          "command": "rockrms-interface.refreshFile",
-          "group": "inline",
-          "when": "view == rockrms-interface-servers && viewItem == file"
         }
       ]
     }
