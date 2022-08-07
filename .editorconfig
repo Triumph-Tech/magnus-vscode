@@ -1,0 +1,21 @@
+root = true
+
+# All Files
+[*]
+indent_style = space
+charset = utf-8
+
+# JS and TS files
+[*.{ts,js}]
+indent_size = 4
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# XML config files
+[*.{xml,yml,tasks,config,vsixmanifest}]
+indent_size = 2
+
+# JSON files
+[*.json]
+indent_size = 2
+insert_final_newline = true
