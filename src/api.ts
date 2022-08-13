@@ -195,7 +195,7 @@ export async function login(serverUrl: string, username?: string, password?: str
  */
 export async function getChildItems(baseServerUrl: string, absolutePath: string | undefined): Promise<IItemDescriptor[]> {
     if (!absolutePath) {
-        return getChildItems(baseServerUrl, "Webhooks/Lava.ashx/vscode");
+        return getChildItems(baseServerUrl, "api/TriumphTech/Magnus/GetTreeItems/root");
     }
 
     const url = getApiUrl(baseServerUrl, absolutePath);
@@ -211,7 +211,10 @@ export async function getChildItems(baseServerUrl: string, absolutePath: string 
         }
     });
 
-    if (result.status < 200 || result.status >= 300 || !result.data) {
+    if (result.status === 403) {
+        throw new Error("Server has denied you access to this resource.");
+    }
+    else if (result.status < 200 || result.status >= 300 || !result.data) {
         const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
         console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
 
@@ -235,11 +238,20 @@ export async function getFileStat(url: string): Promise<LightFileStat> {
         throw new Error("Unable to authorize with the server.");
     }
 
-    const result = await axios.head(url, {
+    let result = await axios.head(url, {
         headers: {
             "Cookie": cookie
         }
     });
+
+    if (result.status === 405) {
+        // Server doesn't support HEAD request. Try again with a GET.
+        result = await axios.get(url, {
+            headers: {
+                "Cookie": cookie
+            }
+        });
+    }
 
     if (result.status < 200 || result.status >= 300) {
         const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;

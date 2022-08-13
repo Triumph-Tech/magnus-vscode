@@ -4,9 +4,9 @@ import { Events } from "./events";
 import { IconCache } from "./iconCache";
 
 /** The custom scheme used in building URIs for Visual Studio Code. */
-const customUriScheme = "ttrockiface";
+const customUriScheme = "ttmagnus";
 
-export class RockTreeDataProvider implements vscode.Disposable, vscode.TreeDataProvider<ITreeNode | undefined>, vscode.FileSystemProvider {
+export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDataProvider<ITreeNode | undefined>, vscode.FileSystemProvider {
     private context: vscode.ExtensionContext;
     private events?: Events;
     private iconCache: IconCache = new IconCache();
@@ -20,7 +20,7 @@ export class RockTreeDataProvider implements vscode.Disposable, vscode.TreeDataP
         this.events = events;
 
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(customUriScheme, this));
-        context.subscriptions.push(vscode.window.registerTreeDataProvider("rockrms-interface-servers", this));
+        context.subscriptions.push(vscode.window.registerTreeDataProvider("magnus-servers", this));
         context.subscriptions.push(this);
 
         this.events.onServerAdded(this.onKnownServersChanged.bind(this));
@@ -154,7 +154,8 @@ export class RockTreeDataProvider implements vscode.Disposable, vscode.TreeDataP
      */
     private async getTreeItemIconPath(uri: string): Promise<{ light: vscode.Uri, dark: vscode.Uri } | vscode.ThemeIcon | undefined> {
         // Check if the icon is a standard icon reference.
-        const themeIconMatch = uri.match(/^\$\(([^)]+)\)/);
+        const themeIconMatch = uri.match(/^\$[({}]([^)]+)[})]/);
+        //const themeIconMatch = uri.match(/^\$\(([^)]+)\)/);
         if (themeIconMatch !== null) {
             return new vscode.ThemeIcon(themeIconMatch[1]);
         }

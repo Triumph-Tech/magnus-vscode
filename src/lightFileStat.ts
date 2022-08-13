@@ -1,4 +1,4 @@
-import { FileStat, FileType } from "vscode";
+import { FilePermission, FileStat, FileType } from "vscode";
 
 /**
  * Simple representation of a FileStat based on the information provided.
@@ -15,6 +15,9 @@ export class LightFileStat implements FileStat {
 
     /** @inheritdoc */
     public readonly mtime: number;
+
+    /** @inheritdoc */
+    public readonly permissions?: FilePermission | undefined;
 
     /**
      * Creates a new FileType that represents a file with the provided information.

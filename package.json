@@ -1,12 +1,12 @@
 {
-  "name": "rockrms-interface",
-  "displayName": "RockRMS Interface",
+  "name": "magnus",
+  "displayName": "Magnus",
   "publisher": "triumph-tech",
   "description": "",
   "version": "0.0.1",
   "repository": {
     "type": "git",
-    "url": "https://github.com/triumph-tech/rockrms-interface.git"
+    "url": "https://github.com/triumph-tech/magnus-vscode.git"
   },
   "engines": {
     "vscode": "^1.69.0"
@@ -15,99 +15,99 @@
     "Other"
   ],
   "activationEvents": [
-    "onView:rockrms-interface-servers",
-    "onFileSystem:ttrockiface",
-    "onCommand:rockrms-interface.addServer"
+    "onView:magnus-servers",
+    "onFileSystem:ttmagnus",
+    "onCommand:magnus.addServer"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "rockrms-interface.addServer",
+        "command": "magnus.addServer",
         "title": "Add Server",
-        "category": "Rock RMS",
+        "category": "Magnus",
         "icon": "$(add)"
       },
       {
-        "command": "rockrms-interface.removeServer",
+        "command": "magnus.removeServer",
         "title": "Remove Server",
-        "category": "Rock RMS",
+        "category": "Magnus",
         "icon": "$(trash)"
       },
       {
-        "command": "rockrms-interface.refreshFolder",
+        "command": "magnus.refreshFolder",
         "title": "Refresh",
-        "category": "Rock RMS",
+        "category": "Magnus",
         "icon": "$(refresh)"
       },
       {
-        "command": "rockrms-interface.refreshFile",
+        "command": "magnus.refreshFile",
         "title": "Refresh",
-        "category": "Rock RMS",
+        "category": "Magnus",
         "icon": "$(cloud)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "rockrms-interface",
-          "title": "RockRMS",
-          "icon": "resources/rockrms.svg"
+          "id": "magnus",
+          "title": "Magnus",
+          "icon": "resources/magnus.svg"
         }
       ]
     },
     "views": {
-      "rockrms-interface": [
+      "magnus": [
         {
-          "id": "rockrms-interface-servers",
-          "name": "Rock Servers",
+          "id": "magnus-servers",
+          "name": "Servers",
           "type": "tree"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "rockrms-interface-servers",
-        "contents": "You don't have any saved servers.\n[Add Server](command:rockrms-interface.addServer)"
+        "view": "magnus-servers",
+        "contents": "You don't have any saved servers.\n[Add Server](command:magnus.addServer)"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "rockrms-interface.refreshFolder",
+          "command": "magnus.refreshFolder",
           "when": "false"
         },
         {
-          "command": "rockrms-interface.refreshFile",
+          "command": "magnus.refreshFile",
           "when": "false"
         },
         {
-          "command": "rockrms-interface.removeServer",
+          "command": "magnus.removeServer",
           "when": "false"
         }
       ],
       "view/title": [
         {
-          "command": "rockrms-interface.addServer",
+          "command": "magnus.addServer",
           "group": "navigation",
-          "when": "view == rockrms-interface-servers"
+          "when": "view == magnus-servers"
         }
       ],
       "view/item/context": [
         {
-          "command": "rockrms-interface.removeServer",
+          "command": "magnus.removeServer",
           "group": "section1",
-          "when": "view == rockrms-interface-servers && viewItem =~ /^server_/"
+          "when": "view == magnus-servers && viewItem =~ /^server_/"
         },
         {
-          "command": "rockrms-interface.refreshFolder",
+          "command": "magnus.refreshFolder",
           "group": "section9",
-          "when": "view == rockrms-interface-servers && viewItem =~ /^server_/"
+          "when": "view == magnus-servers && viewItem =~ /^server_/"
         },
         {
-          "command": "rockrms-interface.refreshFolder",
+          "command": "magnus.refreshFolder",
           "group": "section9",
-          "when": "view == rockrms-interface-servers && viewItem =~ /^folder_/"
+          "when": "view == magnus-servers && viewItem =~ /^folder_/"
         }
       ]
     }

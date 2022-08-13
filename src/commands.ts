@@ -30,9 +30,9 @@ export class Commands implements vscode.Disposable {
         this.context = context;
         this.events = events;
 
-        context.subscriptions.push(vscode.commands.registerCommand("rockrms-interface.addServer", this.addServer, this));
-        context.subscriptions.push(vscode.commands.registerCommand("rockrms-interface.refreshFolder", this.refreshFolder, this));
-        context.subscriptions.push(vscode.commands.registerCommand("rockrms-interface.removeServer", this.removeServer, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.addServer", this.addServer, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.refreshFolder", this.refreshFolder, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.removeServer", this.removeServer, this));
     }
 
     public dispose(): void {
@@ -55,7 +55,7 @@ export class Commands implements vscode.Disposable {
         }
 
         const username = await vscode.window.showInputBox({
-            title: "Add Rock RMS Server (step 2 of 3)",
+            title: "Add Server (step 2 of 3)",
             prompt: "Username"
         });
 
@@ -64,7 +64,7 @@ export class Commands implements vscode.Disposable {
         }
 
         const password = await vscode.window.showInputBox({
-            title: "Add Rock RMS Server (step 3 of 3)",
+            title: "Add Server (step 3 of 3)",
             prompt: "Password",
             password: true
         });
@@ -141,7 +141,7 @@ export class Commands implements vscode.Disposable {
      */
     private async getAddServerUrl(): Promise<string | undefined> {
         let serverUrl = await vscode.window.showInputBox({
-            title: "Add Rock RMS Server (step 1 of 3)",
+            title: "Add Server (step 1 of 3)",
             prompt: "Server URL",
             placeHolder: "https://rock.rocksolidchurchdemo.com"
         });
