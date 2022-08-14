@@ -17,6 +17,7 @@
   "activationEvents": [
     "onView:magnus-servers",
     "onFileSystem:ttmagnus",
+    "onFileSystem:ttmagnuss",
     "onCommand:magnus.addServer"
   ],
   "main": "./out/extension.js",

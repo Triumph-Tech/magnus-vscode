@@ -214,6 +214,9 @@ export async function getChildItems(baseServerUrl: string, absolutePath: string 
     if (result.status === 403) {
         throw new Error("Server has denied you access to this resource.");
     }
+    else if (result.status === 404) {
+        throw new Error("Requested resource was not found.");
+    }
     else if (result.status < 200 || result.status >= 300 || !result.data) {
         const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
         console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
@@ -253,7 +256,10 @@ export async function getFileStat(url: string): Promise<LightFileStat> {
         });
     }
 
-    if (result.status < 200 || result.status >= 300) {
+    if (result.status === 404) {
+        throw new Error("Requested resource was not found.");
+    }
+    else if (result.status < 200 || result.status >= 300) {
         const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
         console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
 
@@ -288,7 +294,10 @@ export async function getFileContent(url: string): Promise<Uint8Array> {
         }
     });
 
-    if (result.status < 200 || result.status >= 300 || !result.data) {
+    if (result.status === 404) {
+        throw new Error("Requested resource was not found.");
+    }
+    else if (result.status < 200 || result.status >= 300 || !result.data) {
         const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
         console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
 
@@ -319,7 +328,10 @@ export async function updateFileContent(url: string, content: Uint8Array): Promi
         }
     });
 
-    if (result.status < 200 || result.status >= 300 || !result.data) {
+    if (result.status === 404) {
+        throw new Error("Requested resource was not found.");
+    }
+    else if (result.status < 200 || result.status >= 300 || !result.data) {
         const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
         console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
 

@@ -4,7 +4,8 @@ import { Events } from "./events";
 import { IconCache } from "./iconCache";
 
 /** The custom scheme used in building URIs for Visual Studio Code. */
-const customUriScheme = "ttmagnus";
+const customUriSchemeInsecure = "ttmagnus";
+const customUriSchemeSecure = "ttmagnuss";
 
 export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDataProvider<ITreeNode | undefined>, vscode.FileSystemProvider {
     private context: vscode.ExtensionContext;
@@ -19,7 +20,8 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         this.context = context;
         this.events = events;
 
-        context.subscriptions.push(vscode.workspace.registerFileSystemProvider(customUriScheme, this));
+        context.subscriptions.push(vscode.workspace.registerFileSystemProvider(customUriSchemeInsecure, this));
+        context.subscriptions.push(vscode.workspace.registerFileSystemProvider(customUriSchemeSecure, this));
         context.subscriptions.push(vscode.window.registerTreeDataProvider("magnus-servers", this));
 
         this.events.onServerAdded(this.onKnownServersChanged.bind(this));
@@ -67,12 +69,11 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         }
         else {
             const childItemDescriptors = await api.getChildItems(element.serverUrl, element.itemDescriptor.uri);
-            const serverUri = vscode.Uri.parse(element.serverUrl);
 
             return childItemDescriptors.map(item => {
                 return {
                     serverUrl: element.serverUrl,
-                    resource: vscode.Uri.parse(`${customUriScheme}://${serverUri.authority}${item.uri}`),
+                    resource: this.getResourceFromWebUrl(element.serverUrl, item.uri),
                     itemDescriptor: item,
                     isServer: false
                 };
@@ -96,7 +97,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                     serverUrl: server,
                     isServer: true,
                     resource: vscode.Uri.from({
-                        scheme: customUriScheme,
+                        scheme: uri.scheme.toLowerCase() === "https" ? customUriSchemeSecure : customUriSchemeInsecure,
                         authority: uri.authority
                     }),
                     itemDescriptor: {
@@ -172,6 +173,55 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         };
     }
 
+    /**
+     * Get a Visual Studio Code resource URI based on the server URL and the
+     * absolute path in the provided URL.
+     *
+     * @param serverUrl The server URL that is handling requests for the url.
+     * @param url The url that needs to be translated into a resource.
+     *
+     * @returns A Uri object that represents the resource.
+     */
+    private getResourceFromWebUrl(serverUrl: string, url: string): vscode.Uri {
+        if (url.includes("://")) {
+            vscode.Uri.parse(url);
+        }
+
+        const serverUri = vscode.Uri.parse(serverUrl);
+        const scheme = serverUri.scheme.toLowerCase() === "https"
+            ? customUriSchemeSecure
+            : customUriSchemeInsecure;
+
+        if (url.toLowerCase().startsWith("/api/triumphtech/magnus")) {
+            return vscode.Uri.parse(`${scheme}://${serverUri.authority}${url.substring(23)}`);
+        }
+        else {
+            return vscode.Uri.parse(`${scheme}://${serverUri.authority}${url}`);
+        }
+    }
+
+    /**
+     * Gets the full HTTP or HTTPS URL for the given Visual Studio Code
+     * resource URI.
+     *
+     * @param uri The URI that needs to be translated.
+     *
+     * @returns A string that represents the URL on the web.
+     */
+    private getWebUrlFromResource(uri: vscode.Uri): string {
+        if (uri.scheme !== customUriSchemeInsecure && uri.scheme !== customUriSchemeSecure) {
+            throw new Error("Unexpected scheme.");
+        }
+
+        return vscode.Uri.from({
+            scheme: uri.scheme === customUriSchemeSecure ? "https" : "http",
+            authority: uri.authority,
+            path: `/api/TriumphTech/Magnus${uri.path}`,
+            query: uri.query,
+            fragment: uri.fragment
+        }).toString();
+    }
+
     // #endregion
 
     // #region Event Handlers
@@ -213,11 +263,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
     /** @inheritdoc */
     public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-        let url = uri.toString();
-
-        if (url.startsWith(customUriScheme)) {
-            url = `https${url.substring(customUriScheme.length)}`;
-        }
+        const url = this.getWebUrlFromResource(uri);
 
         return await api.getFileStat(url);
     }
@@ -234,22 +280,14 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
     /** @inheritdoc */
     public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
-        let url = uri.toString();
-
-        if (url.startsWith(customUriScheme)) {
-            url = `https${url.substring(customUriScheme.length)}`;
-        }
+        const url = this.getWebUrlFromResource(uri);
 
         return await api.getFileContent(url);
     }
 
     /** @inheritdoc */
     public async writeFile(uri: vscode.Uri, content: Uint8Array, _options: { readonly create: boolean; readonly overwrite: boolean; }): Promise<void> {
-        let url = uri.toString();
-
-        if (url.startsWith(customUriScheme)) {
-            url = `https${url.substring(customUriScheme.length)}`;
-        }
+        const url = this.getWebUrlFromResource(uri);
 
         await api.updateFileContent(url, content);
     }
