@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Magnus</title>
+</head>
+
+<style>
+    body {
+        color: var(--vscode-foreground);
+        font-size: var(--vscode-font-size);
+        font-weight: var(--vscode-font-weight);
+        font-family: var(--vscode-font-family);
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+
+    a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    a:hover,
+    a:focus,
+    a:active {
+        color: inherit;
+        outline: none;
+    }
+
+    .body-content {
+        position: absolute;
+        left: 0px;
+        top: 0px;
+        right: 0px;
+        bottom: 0px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .links-container {
+        flex: 1 0;
+    }
+
+    .link {
+        padding: 4px 32px;
+        cursor: pointer;
+    }
+
+    .link>a {
+        display: inline-block;
+        width: 100%;
+    }
+
+    .link:hover {
+        background-color: var(--vscode-list-hoverBackground);
+    }
+
+    .logo-container {
+        flex: 0 0;
+        text-align: center;
+    }
+
+    .logo-container .logo {
+        width: 100%;
+        max-width: 180px;
+        pointer-events: none;
+    }
+
+    body.vscode-light .logo-container .logo {
+        filter: brightness(30%)
+    }
+
+    body.vscode-dark .logo-container .logo {
+        filter: brightness(70%);
+    }
+
+    body.vscode-high-contrast .logo-container .logo {
+        filter: brightness(100%)
+    }
+
+    body.vscode-high-contrast-light .logo-container .logo {
+        filter: brightness(0%);
+    }
+</style>
+
+<body oncontextmenu="return false;">
+    <div class="body-content">
+        <div class="links-container">
+            <div class="link js-read-documentation">
+                Read documentation
+            </div>
+
+            <div class="link js-report-issue">
+                Report issue
+            </div>
+        </div>
+
+        <div class="logo-container">
+            <img src="./triumph-logo-white.svg" class="logo" />
+        </div>
+    </div>
+</body>
+
+<script lang="javascript">
+    (function () {
+        const vscode = acquireVsCodeApi();
+
+        document.querySelector(".js-read-documentation").addEventListener("click", () => {
+            vscode.postMessage({
+                command: "read-documentation"
+            });
+        });
+
+        document.querySelector(".js-report-issue").addEventListener("click", () => {
+            vscode.postMessage({
+                command: "report-issue"
+            });
+        });
+    })();
+</script>
+
+</html>

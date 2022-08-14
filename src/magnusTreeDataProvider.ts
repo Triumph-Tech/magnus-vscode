@@ -21,13 +21,13 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(customUriScheme, this));
         context.subscriptions.push(vscode.window.registerTreeDataProvider("magnus-servers", this));
-        context.subscriptions.push(this);
 
         this.events.onServerAdded(this.onKnownServersChanged.bind(this));
         this.events.onServerRemoved(this.onKnownServersChanged.bind(this));
         this.events.onRefreshFolder(this.onRefreshFolder.bind(this));
     }
 
+    /** @inheritdoc */
     public dispose(): void {
         this.events = undefined;
     }
