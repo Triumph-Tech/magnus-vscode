@@ -8,11 +8,11 @@ declare global {
 
         tooltip?: string | null;
 
-        uri: string;
+        uri?: string | null;
 
         isFolder: boolean;
 
-        icon: string;
+        icon?: string | null;
 
         remoteViewUri?: string | null;
 

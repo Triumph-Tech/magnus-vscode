@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import * as vscode from "vscode";
 import * as api from "./api";
 import { Events } from "./events";
@@ -47,7 +48,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         this.treeNodeTable[element.resource.toString()] = element;
 
-        return {
+        const node: vscode.TreeItem = {
             resourceUri: element.resource,
             collapsibleState: element.itemDescriptor.isFolder ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
             label: element.itemDescriptor.displayName,
@@ -60,6 +61,13 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
             },
             contextValue: this.getContextValue(element)
         };
+
+        if (!element.itemDescriptor.uri && !element.isServer) {
+            node.collapsibleState = vscode.TreeItemCollapsibleState.None;
+            node.command = undefined;
+        }
+
+        return node;
     }
 
     /** @inheritdoc */
@@ -67,8 +75,11 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         if (!element) {
             return this.getServerNodes();
         }
+        else if (!element.itemDescriptor.uri && !element.isServer) {
+            return [];
+        }
         else {
-            const childItemDescriptors = await api.getChildItems(element.serverUrl, element.itemDescriptor.uri);
+            const childItemDescriptors = await api.getChildItems(element.serverUrl, element.itemDescriptor.uri ?? "");
 
             return childItemDescriptors.map(item => {
                 return {
@@ -153,7 +164,11 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
      *
      * @returns The iconPath object that can be used for a TreeItem.
      */
-    private async getTreeItemIconPath(uri: string): Promise<{ light: vscode.Uri, dark: vscode.Uri } | vscode.ThemeIcon | undefined> {
+    private async getTreeItemIconPath(uri?: string | null): Promise<{ light: vscode.Uri, dark: vscode.Uri } | vscode.ThemeIcon | undefined> {
+        if (!uri) {
+            return undefined;
+        }
+
         // Check if the icon is a standard icon reference.
         const themeIconMatch = uri.match(/^\$[({}]([^)]+)[})]/);
         //const themeIconMatch = uri.match(/^\$\(([^)]+)\)/);
@@ -182,15 +197,19 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
      *
      * @returns A Uri object that represents the resource.
      */
-    private getResourceFromWebUrl(serverUrl: string, url: string): vscode.Uri {
-        if (url.includes("://")) {
-            vscode.Uri.parse(url);
-        }
-
+    private getResourceFromWebUrl(serverUrl: string, url?: string | null): vscode.Uri {
         const serverUri = vscode.Uri.parse(serverUrl);
         const scheme = serverUri.scheme.toLowerCase() === "https"
             ? customUriSchemeSecure
             : customUriSchemeInsecure;
+
+        if (url === undefined || url === null) {
+            return vscode.Uri.parse(`${scheme}://${serverUri.authority}/${randomUUID()}`);
+        }
+
+        if (url.includes("://")) {
+            return vscode.Uri.parse(url);
+        }
 
         if (url.toLowerCase().startsWith("/api/triumphtech/magnus")) {
             return vscode.Uri.parse(`${scheme}://${serverUri.authority}${url.substring(23)}`);
