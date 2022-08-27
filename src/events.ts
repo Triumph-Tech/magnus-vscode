@@ -12,7 +12,22 @@ enum EventName {
     ServerRemoved = "serverRemoved",
 
     /** A folder should be refreshed. */
-    RefreshFolder = "refreshFolder"
+    RefreshFolder = "refreshFolder",
+
+    /** An identifier should be copied to the clipboard. */
+    CopyId = "copyId",
+
+    /** An unique identifier should be copied to the clipboard. */
+    CopyGuid = "copyGuid",
+
+    /** A generic value should be copied to the clipboard. */
+    CopyValue = "copyValue",
+
+    /** An item should be viewed on the web. */
+    RemoteView = "remoteView",
+
+    /** An item should be edited on the web. */
+    RemoteEdit = "remoteEdit"
 }
 
 /**
@@ -53,7 +68,7 @@ export class Events implements Disposable {
      *
      * @param listener The callback to be called.
      */
-     public onServerRemoved(listener: (() => void)): void {
+    public onServerRemoved(listener: (() => void)): void {
         this.eventEmitter?.on(EventName.ServerRemoved, listener);
     }
 
@@ -63,8 +78,58 @@ export class Events implements Disposable {
      *
      * @param listener The callback to be called.
      */
-    public onRefreshFolder(listener: ((uri: ITreeNode) => void)): void {
+    public onRefreshFolder(listener: ((node: ITreeNode) => void)): void {
         this.eventEmitter?.on(EventName.RefreshFolder, listener);
+    }
+
+    /**
+     * Subscribe to the copy id event. These callbacks are called
+     * when the person activates the Copy Id command for an item.
+     *
+     * @param listener The callback to be called.
+     */
+    public onCopyId(listener: ((node: ITreeNode) => void)): void {
+        this.eventEmitter?.on(EventName.CopyId, listener);
+    }
+
+    /**
+     * Subscribe to the copy guid event. These callbacks are called
+     * when the person activates the Copy Guid command for an item.
+     *
+     * @param listener The callback to be called.
+     */
+    public onCopyGuid(listener: ((node: ITreeNode) => void)): void {
+        this.eventEmitter?.on(EventName.CopyGuid, listener);
+    }
+
+    /**
+     * Subscribe to the copy value event. These callbacks are called
+     * when the person activates the Copy Value command for an item.
+     *
+     * @param listener The callback to be called.
+     */
+    public onCopyValue(listener: ((node: ITreeNode) => void)): void {
+        this.eventEmitter?.on(EventName.CopyValue, listener);
+    }
+
+    /**
+     * Subscribe to the remote view event. These callbacks are called
+     * when the person activates the View on Web command for an item.
+     *
+     * @param listener The callback to be called.
+     */
+    public onRemoteView(listener: ((node: ITreeNode) => void)): void {
+        this.eventEmitter?.on(EventName.RemoteView, listener);
+    }
+
+    /**
+     * Subscribe to the remote edit event. These callbacks are called
+     * when the person activates the Edit on Web command for an item.
+     *
+     * @param listener The callback to be called.
+     */
+    public onRemoteEdit(listener: ((node: ITreeNode) => void)): void {
+        this.eventEmitter?.on(EventName.RemoteEdit, listener);
     }
 
     /**
@@ -79,7 +144,7 @@ export class Events implements Disposable {
      * Emit the server removed event. This should be called when an existing
      * server is removed from the list of known servers.
      */
-     public emitServerRemoved(): void {
+    public emitServerRemoved(): void {
         this.eventEmitter?.emit(EventName.ServerRemoved);
     }
 
@@ -91,6 +156,56 @@ export class Events implements Disposable {
      */
     public emitRefreshFolder(node: ITreeNode): void {
         this.eventEmitter?.emit(EventName.RefreshFolder, node);
+    }
+
+    /**
+     * Emit the copy id event. This should be called when the person
+     * activates the Copy Id command on an item.
+     *
+     * @param node The node whose value should be copied.
+     */
+    public emitCopyId(node: ITreeNode): void {
+        this.eventEmitter?.emit(EventName.CopyId, node);
+    }
+
+    /**
+     * Emit the copy guid event. This should be called when the person
+     * activates the Copy Guid command on an item.
+     *
+     * @param node The node whose value should be copied.
+     */
+    public emitCopyGuid(node: ITreeNode): void {
+        this.eventEmitter?.emit(EventName.CopyGuid, node);
+    }
+
+    /**
+     * Emit the copy value event. This should be called when the person
+     * activates the Copy Value command on an item.
+     *
+     * @param node The node whose value should be copied.
+     */
+    public emitCopyValue(node: ITreeNode): void {
+        this.eventEmitter?.emit(EventName.CopyValue, node);
+    }
+
+    /**
+     * Emit the remote view event. This should be called when the person
+     * activates the View on Web command on an item.
+     *
+     * @param node The node whose value should be copied.
+     */
+    public emitRemoteView(node: ITreeNode): void {
+        this.eventEmitter?.emit(EventName.RemoteView, node);
+    }
+
+    /**
+     * Emit the remote Edit event. This should be called when the person
+     * activates the Edit on Web command on an item.
+     *
+     * @param node The node whose value should be copied.
+     */
+    public emitRemoteEdit(node: ITreeNode): void {
+        this.eventEmitter?.emit(EventName.RemoteEdit, node);
     }
 
     // #endregion

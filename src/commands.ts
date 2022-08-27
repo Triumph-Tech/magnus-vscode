@@ -33,6 +33,11 @@ export class Commands implements vscode.Disposable {
         context.subscriptions.push(vscode.commands.registerCommand("magnus.addServer", this.addServer, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.refreshFolder", this.refreshFolder, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.removeServer", this.removeServer, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.copyId", this.copyId, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.copyGuid", this.copyGuid, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.copyValue", this.copyValue, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.remoteView", this.remoteView, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.remoteEdit", this.remoteEdit, this));
     }
 
     public dispose(): void {
@@ -99,6 +104,51 @@ export class Commands implements vscode.Disposable {
      */
     private refreshFolder(node: ITreeNode): void {
         this.events.emitRefreshFolder(node);
+    }
+
+    /**
+     * Called when the person wants to copy the id of a node.
+     *
+     * @param node The node currently selected.
+     */
+    private copyId(node: ITreeNode): void {
+        this.events.emitCopyId(node);
+    }
+
+    /**
+     * Called when the person wants to copy the guid of a node.
+     *
+     * @param node The node currently selected.
+     */
+    private copyGuid(node: ITreeNode): void {
+        this.events.emitCopyGuid(node);
+    }
+
+    /**
+     * Called when the person wants to copy the value of a node.
+     *
+     * @param node The node currently selected.
+     */
+    private copyValue(node: ITreeNode): void {
+        this.events.emitCopyValue(node);
+    }
+
+    /**
+     * Called when the person wants to remotely view a node.
+     *
+     * @param node The node currently selected.
+     */
+    private remoteView(node: ITreeNode): void {
+        this.events.emitRemoteView(node);
+    }
+
+    /**
+     * Called when the person wants to remotely edit a node.
+     *
+     * @param node The node currently selected.
+     */
+    private remoteEdit(node: ITreeNode): void {
+        this.events.emitRemoteEdit(node);
     }
 
     /**

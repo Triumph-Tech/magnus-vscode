@@ -28,6 +28,11 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         this.events.onServerAdded(this.onKnownServersChanged.bind(this));
         this.events.onServerRemoved(this.onKnownServersChanged.bind(this));
         this.events.onRefreshFolder(this.onRefreshFolder.bind(this));
+        this.events.onCopyId(this.onCopyId.bind(this));
+        this.events.onCopyGuid(this.onCopyGuid.bind(this));
+        this.events.onCopyValue(this.onCopyValue.bind(this));
+        this.events.onRemoteView(this.onRemoteView.bind(this));
+        this.events.onRemoteEdit(this.onRemoteEdit.bind(this));
     }
 
     /** @inheritdoc */
@@ -44,7 +49,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
     /** @inheritdoc */
     public async getTreeItem(element: ITreeNode): Promise<vscode.TreeItem> {
-        const iconPath = await this.getTreeItemIconPath(element.itemDescriptor.icon);
+        const iconPath = await this.getTreeItemIconPair(element.itemDescriptor.icon, element.itemDescriptor.iconDark);
 
         this.treeNodeTable[element.resource.toString()] = element;
 
@@ -62,9 +67,16 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
             contextValue: this.getContextValue(element)
         };
 
-        if (!element.itemDescriptor.uri && !element.isServer) {
-            node.collapsibleState = vscode.TreeItemCollapsibleState.None;
-            node.command = undefined;
+        const hasOpenCommand = element.itemDescriptor.disableOpenFile !== true
+            && !element.itemDescriptor.isFolder
+            && (element.itemDescriptor.uri || element.isServer);
+
+        if (hasOpenCommand) {
+            node.command = {
+                command: "vscode.open",
+                arguments: [element.resource],
+                title: "Open File"
+            };
         }
 
         return node;
@@ -142,6 +154,18 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         let context = `${type}_`;
 
+        if (node.itemDescriptor.id !== undefined) {
+            context = `${context}canCopyId_`;
+        }
+
+        if (node.itemDescriptor.guid !== undefined) {
+            context = `${context}canCopyGuid_`;
+        }
+
+        if (node.itemDescriptor.copyValue) {
+            context = `${context}canCopyValue_`;
+        }
+
         if (node.itemDescriptor.remoteViewUri) {
             context = `${context}canView_`;
         }
@@ -150,8 +174,12 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
             context = `${context}canEdit_`;
         }
 
-        if (node.itemDescriptor.dropUploadUri) {
+        if (node.itemDescriptor.uploadFileUri) {
             context = `${context}canUpload_`;
+        }
+
+        if (node.itemDescriptor.buildUri) {
+            context = `${context}canBuild_`;
         }
 
         return context;
@@ -161,30 +189,36 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
      * Gets the icon path element for a tree item.
      *
      * @param uri The URI of the icon. This should be changed to the object interface.
+     * @param darkUri The URI of the icon. This should be changed to the object interface.
      *
      * @returns The iconPath object that can be used for a TreeItem.
      */
-    private async getTreeItemIconPath(uri?: string | null): Promise<{ light: vscode.Uri, dark: vscode.Uri } | vscode.ThemeIcon | undefined> {
+    private async getTreeItemIconPair(uri?: string | null, darkUri?: string | null): Promise<string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } | vscode.ThemeIcon | undefined> {
         if (!uri) {
             return undefined;
         }
 
         // Check if the icon is a standard icon reference.
-        const themeIconMatch = uri.match(/^\$[({}]([^)]+)[})]/);
-        //const themeIconMatch = uri.match(/^\$\(([^)]+)\)/);
+        const themeIconMatch = uri.match(/^\$\(([^)]+)\)/);
         if (themeIconMatch !== null) {
             return new vscode.ThemeIcon(themeIconMatch[1]);
         }
 
-        const iconData = await this.iconCache.getIcon(uri);
-
-        if (iconData === null) {
+        // Load the light icon from the remote URI.
+        const light = await this.iconCache.getIcon(uri);
+        if (light === null) {
             return undefined;
         }
 
+        // Try to load the dark icon from the remote URI.
+        let dark = darkUri ? (await this.iconCache.getIcon(darkUri)) : null;
+        if (dark === null) {
+            dark = light;
+        }
+
         return {
-            light: vscode.Uri.parse(iconData),
-            dark: vscode.Uri.parse(iconData)
+            light: vscode.Uri.parse(light),
+            dark: vscode.Uri.parse(dark)
         };
     }
 
@@ -259,6 +293,61 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
      */
     private onRefreshFolder(item: ITreeNode): void {
         this.didChangeTreeData.fire(item);
+    }
+
+    /**
+     * Called when an identifier should be copied to the clipboard.
+     *
+     * @param item The item whose value should be copied.
+     */
+    private onCopyId(item: ITreeNode): void {
+        if (item.itemDescriptor.id !== undefined) {
+            vscode.env.clipboard.writeText(item.itemDescriptor.id.toString());
+        }
+    }
+
+    /**
+     * Called when an unique identifier should be copied to the clipboard.
+     *
+     * @param item The item whose value should be copied.
+     */
+    private onCopyGuid(item: ITreeNode): void {
+        if (item.itemDescriptor.guid !== undefined) {
+            vscode.env.clipboard.writeText(item.itemDescriptor.guid);
+        }
+    }
+
+    /**
+     * Called when a value should be copied to the clipboard.
+     *
+     * @param item The item whose value should be copied.
+     */
+    private onCopyValue(item: ITreeNode): void {
+        if (item.itemDescriptor.copyValue) {
+            vscode.env.clipboard.writeText(item.itemDescriptor.copyValue);
+        }
+    }
+
+    /**
+     * Called when an item should be opened on the web for viewing.
+     *
+     * @param item The item whose value should be copied.
+     */
+    private onRemoteView(item: ITreeNode): void {
+        if (item.itemDescriptor.remoteViewUri) {
+            vscode.env.openExternal(vscode.Uri.parse(item.itemDescriptor.remoteViewUri));
+        }
+    }
+
+    /**
+     * Called when an item should be opened on the web for editing.
+     *
+     * @param item The item whose value should be copied.
+     */
+    private onRemoteEdit(item: ITreeNode): void {
+        if (item.itemDescriptor.remoteEditUri) {
+            vscode.env.openExternal(vscode.Uri.parse(item.itemDescriptor.remoteEditUri));
+        }
     }
 
     // #endregion

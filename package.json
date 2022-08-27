@@ -42,10 +42,29 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "magnus.refreshFile",
-        "title": "Refresh",
-        "category": "Magnus",
-        "icon": "$(cloud)"
+        "command": "magnus.copyId",
+        "title": "Copy Id",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnus.copyGuid",
+        "title": "Copy Guid",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnus.copyValue",
+        "title": "Copy Value",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnus.remoteView",
+        "title": "View on Web",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnus.remoteEdit",
+        "title": "Edit on Web",
+        "category": "Magnus"
       }
     ],
     "viewsContainers": {
@@ -84,11 +103,27 @@
           "when": "false"
         },
         {
-          "command": "magnus.refreshFile",
+          "command": "magnus.removeServer",
           "when": "false"
         },
         {
-          "command": "magnus.removeServer",
+          "command": "magnus.copyId",
+          "when": "false"
+        },
+        {
+          "command": "magnus.copyGuid",
+          "when": "false"
+        },
+        {
+          "command": "magnus.copyValue",
+          "when": "false"
+        },
+        {
+          "command": "magnus.remoteView",
+          "when": "false"
+        },
+        {
+          "command": "magnus.remoteEdit",
           "when": "false"
         }
       ],
@@ -104,6 +139,31 @@
           "command": "magnus.removeServer",
           "group": "section1",
           "when": "view == magnus-servers && viewItem =~ /^server_/"
+        },
+        {
+          "command": "magnus.copyId",
+          "group": "section1",
+          "when": "view == magnus-servers && viewItem =~ /_canCopyId_/"
+        },
+        {
+          "command": "magnus.copyGuid",
+          "group": "section1",
+          "when": "view == magnus-servers && viewItem =~ /_canCopyGuid_/"
+        },
+        {
+          "command": "magnus.copyValue",
+          "group": "section1",
+          "when": "view == magnus-servers && viewItem =~ /_canCopyValue_/"
+        },
+        {
+          "command": "magnus.remoteView",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /_canView_/"
+        },
+        {
+          "command": "magnus.remoteEdit",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /_canEdit_/"
         },
         {
           "command": "magnus.refreshFolder",
