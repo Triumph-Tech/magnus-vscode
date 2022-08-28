@@ -28,6 +28,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         this.events.onServerAdded(this.onKnownServersChanged.bind(this));
         this.events.onServerRemoved(this.onKnownServersChanged.bind(this));
         this.events.onRefreshFolder(this.onRefreshFolder.bind(this));
+        this.events.onBuildUrl(this.onBuildUrl.bind(this));
         this.events.onCopyId(this.onCopyId.bind(this));
         this.events.onCopyGuid(this.onCopyGuid.bind(this));
         this.events.onCopyValue(this.onCopyValue.bind(this));
@@ -128,6 +129,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                         tooltip: uri.authority,
                         isFolder: true,
                         icon: "$(server)",
+                        buildUri: "test",
                         uri: ""
                     }
                 });
@@ -293,6 +295,41 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
      */
     private onRefreshFolder(item: ITreeNode): void {
         this.didChangeTreeData.fire(item);
+    }
+
+    /**
+     * Called when a node should be built by the server. Perform a POST
+     * operation to the specified callback URL.
+     *
+     * @param item The node item that should be built.
+     */
+    private onBuildUrl(item: ITreeNode): void {
+        const buildUrl = item.itemDescriptor.buildUri;
+
+        if (buildUrl) {
+            const options: vscode.ProgressOptions = {
+                cancellable: false,
+                location: vscode.ProgressLocation.Notification,
+                title: `Building ${item.itemDescriptor.displayName}`
+            };
+
+            vscode.window.withProgress(options, async progress => {
+                try {
+                    await api.buildUrl(buildUrl);
+
+                    progress.report({
+                        message: "Complete"
+                    });
+
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                catch (error) {
+                    if (error instanceof Error) {
+                        vscode.window.showErrorMessage(error.message);
+                    }
+                }
+            });
+        }
     }
 
     /**

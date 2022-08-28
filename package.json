@@ -42,6 +42,11 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "magnus.buildUrl",
+        "title": "Build",
+        "category": "Magnus"
+      },
+      {
         "command": "magnus.copyId",
         "title": "Copy Id",
         "category": "Magnus"
@@ -107,6 +112,10 @@
           "when": "false"
         },
         {
+          "command": "magnus.buildUrl",
+          "when": "false"
+        },
+        {
           "command": "magnus.copyId",
           "when": "false"
         },
@@ -154,6 +163,11 @@
           "command": "magnus.copyValue",
           "group": "section1",
           "when": "view == magnus-servers && viewItem =~ /_canCopyValue_/"
+        },
+        {
+          "command": "magnus.buildUrl",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /_canBuild_/"
         },
         {
           "command": "magnus.remoteView",

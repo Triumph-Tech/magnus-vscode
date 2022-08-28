@@ -33,6 +33,7 @@ export class Commands implements vscode.Disposable {
         context.subscriptions.push(vscode.commands.registerCommand("magnus.addServer", this.addServer, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.refreshFolder", this.refreshFolder, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.removeServer", this.removeServer, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.buildUrl", this.buildUrl, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.copyId", this.copyId, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.copyGuid", this.copyGuid, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.copyValue", this.copyValue, this));
@@ -104,6 +105,15 @@ export class Commands implements vscode.Disposable {
      */
     private refreshFolder(node: ITreeNode): void {
         this.events.emitRefreshFolder(node);
+    }
+
+    /**
+     * Called when the person wants to build the specified node.
+     *
+     * @param node The node to be built.
+     */
+    private buildUrl(node: ITreeNode): void {
+        this.events.emitBuildUrl(node);
     }
 
     /**

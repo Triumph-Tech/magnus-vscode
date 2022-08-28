@@ -14,6 +14,9 @@ enum EventName {
     /** A folder should be refreshed. */
     RefreshFolder = "refreshFolder",
 
+    /** An item in the tree should be (re-)built. */
+    BuildUrl = "buildUrl",
+
     /** An identifier should be copied to the clipboard. */
     CopyId = "copyId",
 
@@ -80,6 +83,16 @@ export class Events implements Disposable {
      */
     public onRefreshFolder(listener: ((node: ITreeNode) => void)): void {
         this.eventEmitter?.on(EventName.RefreshFolder, listener);
+    }
+
+    /**
+     * Subscribe to the build URL event. These callbacks are called when
+     * the person activates the Build command for a tree node.
+     *
+     * @param listener The callback to be called.
+     */
+    public onBuildUrl(listener: ((node: ITreeNode) => void)): void {
+        this.eventEmitter?.on(EventName.BuildUrl, listener);
     }
 
     /**
@@ -156,6 +169,16 @@ export class Events implements Disposable {
      */
     public emitRefreshFolder(node: ITreeNode): void {
         this.eventEmitter?.emit(EventName.RefreshFolder, node);
+    }
+
+    /**
+     * Emit the build URL event. This should be called when the person
+     * activates the Build command on a tree node.
+     *
+     * @param node The node that should be built.
+     */
+    public emitBuildUrl(node: ITreeNode): void {
+        this.eventEmitter?.emit(EventName.BuildUrl, node);
     }
 
     /**
