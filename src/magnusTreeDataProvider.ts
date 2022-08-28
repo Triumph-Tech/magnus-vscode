@@ -34,6 +34,8 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         this.events.onCopyValue(this.onCopyValue.bind(this));
         this.events.onRemoteView(this.onRemoteView.bind(this));
         this.events.onRemoteEdit(this.onRemoteEdit.bind(this));
+
+        this.initNoServersContext();
     }
 
     /** @inheritdoc */
@@ -108,6 +110,17 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
     // #endregion
 
     // #region Private Functions
+
+    /**
+     * Initialize the "magnus:noServers" context variable so that the welcome
+     * content will only show if no servers have been configured. Otherwise it
+     * shows for about 1 second while the extension finishes loading.
+     */
+    private async initNoServersContext(): Promise<void> {
+        const servers = this.context.globalState.get<string[]>("KnownServers", []);
+
+        await vscode.commands.executeCommand("setContext", "magnus:noServers", servers.length === 0);
+    }
 
     private getServerNodes(): ITreeNode[] {
         const nodes: ITreeNode[] = [];

@@ -98,7 +98,8 @@
     "viewsWelcome": [
       {
         "view": "magnus-servers",
-        "contents": "You don't have any saved servers.\n[Add Server](command:magnus.addServer)"
+        "contents": "You don't have any saved servers.\n[Add Server](command:magnus.addServer)",
+        "when": "magnus:noServers"
       }
     ],
     "menus": {
