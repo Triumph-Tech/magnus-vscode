@@ -1,9 +1,10 @@
 {
   "name": "magnus",
   "displayName": "Magnus",
-  "publisher": "triumph-tech",
+  "publisher": "TriumphTech",
   "description": "",
-  "version": "0.0.1",
+  "version": "0.9.0",
+  "license": "mit",
   "repository": {
     "type": "git",
     "url": "https://github.com/triumph-tech/magnus-vscode.git"
@@ -212,7 +213,8 @@
     "eslint": "^8.20.0",
     "glob": "^8.0.3",
     "mocha": "^10.0.0",
-    "typescript": "^4.7.4"
+    "typescript": "^4.7.4",
+    "vsce": "^2.11.0"
   },
   "dependencies": {
     "axios": "0.27.2",
