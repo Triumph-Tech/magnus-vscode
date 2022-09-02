@@ -169,11 +169,11 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         let context = `${type}_`;
 
-        if (node.itemDescriptor.id !== undefined) {
+        if (node.itemDescriptor.id !== null && node.itemDescriptor.id !== undefined && node.itemDescriptor.id !== "") {
             context = `${context}canCopyId_`;
         }
 
-        if (node.itemDescriptor.guid !== undefined) {
+        if (node.itemDescriptor.guid !== null && node.itemDescriptor.guid !== undefined && node.itemDescriptor.guid !== "") {
             context = `${context}canCopyGuid_`;
         }
 
@@ -351,8 +351,8 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
      * @param item The item whose value should be copied.
      */
     private onCopyId(item: ITreeNode): void {
-        if (item.itemDescriptor.id !== undefined) {
-            vscode.env.clipboard.writeText(item.itemDescriptor.id.toString());
+        if (item.itemDescriptor.id !== null && item.itemDescriptor.id !== undefined) {
+            vscode.env.clipboard.writeText(item.itemDescriptor.id);
         }
     }
 
@@ -362,7 +362,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
      * @param item The item whose value should be copied.
      */
     private onCopyGuid(item: ITreeNode): void {
-        if (item.itemDescriptor.guid !== undefined) {
+        if (item.itemDescriptor.guid !== null && item.itemDescriptor.guid !== undefined) {
             vscode.env.clipboard.writeText(item.itemDescriptor.guid);
         }
     }

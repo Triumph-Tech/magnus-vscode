@@ -9,10 +9,10 @@ declare global {
      */
     export type IItemDescriptor = {
         /** The identifier of this item in Rock. */
-        id?: number;
+        id?: string | null;
 
         /** The unique identifier of this item in Rock. */
-        guid?: string;
+        guid?: string | null;
 
         /** The name to use in the tree view. */
         displayName: string;
