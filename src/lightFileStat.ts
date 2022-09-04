@@ -25,8 +25,9 @@ export class LightFileStat implements FileStat {
      * @param fileSize The size of the file content.
      * @param modifiedDateTime A string that represents when the file was modified.
      * @param createdDateTime A string that represents when the file was created.
+     * @param isReadOnly A boolean that represents if this file is considered read-only and cannot be changed.
      */
-    public constructor(fileSize: number, modifiedDateTime?: string, createdDateTime?: string) {
+    public constructor(fileSize: number, modifiedDateTime: string, createdDateTime: string, isReadOnly: boolean) {
         this.type = FileType.File;
         this.size = fileSize;
 
@@ -46,6 +47,10 @@ export class LightFileStat implements FileStat {
             const timeValue = Date.parse(modifiedDateTime);
 
             this.mtime = isNaN(timeValue) ? Date.now() : timeValue;
+        }
+
+        if (isReadOnly) {
+            this.permissions = FilePermission.Readonly;
         }
     }
 }

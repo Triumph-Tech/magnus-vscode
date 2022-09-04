@@ -272,7 +272,9 @@ export async function getFileStat(url: string): Promise<LightFileStat> {
     const date = result.headers["date"];
     const fileSize = parseInt(result.headers["content-length"]);
 
-    return new LightFileStat(isNaN(fileSize) ? 0 : fileSize, date, date);
+    const isReadOnly = result.headers["x-readonly"] === "true";
+
+    return new LightFileStat(isNaN(fileSize) ? 0 : fileSize, date, date, isReadOnly);
 }
 
 /**
@@ -286,7 +288,7 @@ export async function getFileContent(url: string): Promise<Uint8Array> {
     const cookie = await getAuthorizationCookie(getServerBaseUrl(url));
 
     if (cookie === null) {
-        console.log("auth failutre: ", url);
+        console.log("auth failure: ", url);
         throw new Error("Unable to authorize with the server.");
     }
 
