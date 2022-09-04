@@ -14,6 +14,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
     private iconCache: IconCache = new IconCache();
     private didChangeTreeData: vscode.EventEmitter<ITreeNode | undefined> = new vscode.EventEmitter<ITreeNode | undefined>();
     private treeNodeTable: Record<string, ITreeNode> = {};
+    private parentItemLookup: Record<string, ITreeNode> = {};
 
     // #region Constructors
 
@@ -29,6 +30,8 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         this.events.onServerRemoved(this.onKnownServersChanged.bind(this));
         this.events.onRefreshFolder(this.onRefreshFolder.bind(this));
         this.events.onBuildUrl(this.onBuildUrl.bind(this));
+        this.events.onUploadUrl(this.onUploadUrl.bind(this));
+        this.events.onDeleteUrl(this.onDeleteUrl.bind(this));
         this.events.onCopyId(this.onCopyId.bind(this));
         this.events.onCopyGuid(this.onCopyGuid.bind(this));
         this.events.onCopyValue(this.onCopyValue.bind(this));
@@ -96,7 +99,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         else {
             const childItemDescriptors = await api.getChildItems(element.serverUrl, element.itemDescriptor.uri ?? "");
 
-            return childItemDescriptors.map(item => {
+            const items = childItemDescriptors.map(item => {
                 return {
                     serverUrl: element.serverUrl,
                     resource: this.getResourceFromWebUrl(element.serverUrl, item.uri),
@@ -104,6 +107,12 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                     isServer: false
                 };
             });
+
+            for (const item of items) {
+                this.parentItemLookup[item.resource.toString()] = element;
+            }
+
+            return items;
         }
     }
 
@@ -157,6 +166,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                         icon: descriptor?.icon || "$(server)",
                         iconDark: descriptor?.iconDark || "$(server)",
                         buildUri: descriptor?.buildUri,
+                        uploadFileUri: descriptor?.uploadFileUri,
                         uri: ""
                     }
                 });
@@ -339,30 +349,157 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
     private onBuildUrl(item: ITreeNode): void {
         const buildUrl = item.itemDescriptor.buildUri;
 
-        if (buildUrl) {
-            const options: vscode.ProgressOptions = {
-                cancellable: false,
-                location: vscode.ProgressLocation.Notification,
-                title: `Building ${item.itemDescriptor.displayName}`
-            };
+        if (!buildUrl) {
+            return;
+        }
 
-            vscode.window.withProgress(options, async progress => {
-                try {
-                    await api.buildUrl(buildUrl);
+        const options: vscode.ProgressOptions = {
+            cancellable: false,
+            location: vscode.ProgressLocation.Notification,
+            title: `Building ${item.itemDescriptor.displayName}`
+        };
 
+        vscode.window.withProgress(options, async progress => {
+            try {
+                const response = await api.buildUrl(buildUrl);
+
+                if (response.actionSuccessful) {
+                    progress.report({
+                        message: response.responseMessage || "Complete"
+                    });
+                }
+                else {
                     progress.report({
                         message: "Complete"
                     });
 
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
-                catch (error) {
-                    if (error instanceof Error) {
-                        vscode.window.showErrorMessage(error.message);
-                    }
+                    vscode.window.showErrorMessage(response.responseMessage || "Build failed.");
                 }
-            });
+
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            catch (error) {
+                if (error instanceof Error) {
+                    vscode.window.showErrorMessage(error.message);
+                }
+            }
+        });
+    }
+
+    /**
+     * Called when a node should have new files uploaded to it. Perform a POST
+     * operation to the specified callback URL.
+     *
+     * @param item The node item that should be built.
+     */
+    private async onUploadUrl(item: ITreeNode): Promise<void> {
+        const uploadUrl = item.itemDescriptor.uploadFileUri;
+
+        if (!uploadUrl) {
+            return;
         }
+
+        const fileUris = await vscode.window.showOpenDialog({
+            canSelectFiles: true,
+            canSelectFolders: false,
+            canSelectMany: true
+        });
+
+        if (!fileUris || fileUris.length === 0) {
+            return;
+        }
+
+        const options: vscode.ProgressOptions = {
+            cancellable: false,
+            location: vscode.ProgressLocation.Notification,
+            title: `Uploading to ${item.itemDescriptor.displayName}`
+        };
+
+        vscode.window.withProgress(options, async progress => {
+            try {
+                const response = await api.uploadUrl(uploadUrl, fileUris);
+
+                if (response.actionSuccessful) {
+                    progress.report({
+                        message: response.responseMessage || "Complete"
+                    });
+                }
+                else {
+                    progress.report({
+                        message: "Complete"
+                    });
+
+                    vscode.window.showErrorMessage(response.responseMessage || "Upload failed.");
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            catch (error) {
+                if (error instanceof Error) {
+                    vscode.window.showErrorMessage(error.message);
+                }
+            }
+        });
+    }
+
+    /**
+     * Called when a node should be deleted by the server. Perform a DELETE
+     * operation to the specified callback URL.
+     *
+     * @param item The node item that should be built.
+     */
+    private async onDeleteUrl(item: ITreeNode): Promise<void> {
+        const deleteUrl = item.itemDescriptor.deleteUri;
+
+        if (!deleteUrl) {
+            return;
+        }
+
+        const verificationResult = await vscode.window.showInformationMessage(`Do you really want to delete '${item.itemDescriptor.displayName}'?`, {
+            modal: true
+        }, "Delete");
+
+        if (verificationResult !== "Delete") {
+            return;
+        }
+
+        const options: vscode.ProgressOptions = {
+            cancellable: false,
+            location: vscode.ProgressLocation.Notification,
+            title: `Deleting ${item.itemDescriptor.displayName}`
+        };
+
+        vscode.window.withProgress(options, async progress => {
+            try {
+                const response = await api.deleteUrl(deleteUrl);
+
+                if (response.actionSuccessful) {
+                    progress.report({
+                        message: response.responseMessage || "Complete"
+                    });
+                }
+                else {
+                    progress.report({
+                        message: "Complete"
+                    });
+
+                    vscode.window.showErrorMessage(response.responseMessage || "Delete failed.");
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                const parentItem = this.parentItemLookup[item.resource.toString()];
+
+                if (parentItem) {
+                    this.didChangeTreeData.fire(parentItem);
+                }
+            }
+            catch (error) {
+                if (error instanceof Error) {
+                    vscode.window.showErrorMessage(error.message);
+                }
+            }
+        });
     }
 
     /**

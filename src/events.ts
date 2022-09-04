@@ -17,6 +17,12 @@ enum EventName {
     /** An item in the tree should be (re-)built. */
     BuildUrl = "buildUrl",
 
+    /** An item in the tree should have a new file uploaded to it. */
+    UploadUrl = "uploadUrl",
+
+    /** An item in the tree should be deleted. */
+    DeleteUrl = "deleteUrl",
+
     /** An identifier should be copied to the clipboard. */
     CopyId = "copyId",
 
@@ -93,6 +99,26 @@ export class Events implements Disposable {
      */
     public onBuildUrl(listener: ((node: ITreeNode) => void)): void {
         this.eventEmitter?.on(EventName.BuildUrl, listener);
+    }
+
+    /**
+     * Subscribe to the upload URL event. These callbacks are called when
+     * the person activates the Upload command for a tree node.
+     *
+     * @param listener The callback to be called.
+     */
+     public onUploadUrl(listener: ((node: ITreeNode) => void)): void {
+        this.eventEmitter?.on(EventName.UploadUrl, listener);
+    }
+
+    /**
+     * Subscribe to the delete URL event. These callbacks are called when
+     * the person activates the Delete command for a tree node.
+     *
+     * @param listener The callback to be called.
+     */
+     public onDeleteUrl(listener: ((node: ITreeNode) => void)): void {
+        this.eventEmitter?.on(EventName.DeleteUrl, listener);
     }
 
     /**
@@ -179,6 +205,26 @@ export class Events implements Disposable {
      */
     public emitBuildUrl(node: ITreeNode): void {
         this.eventEmitter?.emit(EventName.BuildUrl, node);
+    }
+
+    /**
+     * Emit the upload URL event. This should be called when the person
+     * activates the Upload command on a tree node.
+     *
+     * @param node The node that should be built.
+     */
+     public emitUploadUrl(node: ITreeNode): void {
+        this.eventEmitter?.emit(EventName.UploadUrl, node);
+    }
+
+    /**
+     * Emit the delete URL event. This should be called when the person
+     * activates the Delete command on a tree node.
+     *
+     * @param node The node that should be built.
+     */
+     public emitDeleteUrl(node: ITreeNode): void {
+        this.eventEmitter?.emit(EventName.DeleteUrl, node);
     }
 
     /**

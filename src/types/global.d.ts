@@ -47,6 +47,9 @@ declare global {
         /** The URI to use in response to a "Build" action. */
         buildUri?: string | null;
 
+        /** The URI to use in response to a "Delete" action. */
+        deleteUri?: string | null;
+
         /** The value to place in the clipboard in response to the Copy Value action. */
         copyValue?: string | null;
     };
@@ -60,4 +63,18 @@ declare global {
 
         isServer: boolean;
     };
+
+    /**
+     * Defines the response to a remote action, such as build or delete.
+     */
+    export interface ActionResponse {
+        /** A message to display to the person indicating the result. */
+        responseMessage: string;
+
+        /** Will be true if the operation is still running. */
+        isAsynchronous: boolean;
+
+        /** True if the action was successful, otherwise false. */
+        actionSuccessful: boolean;
+    }
 }

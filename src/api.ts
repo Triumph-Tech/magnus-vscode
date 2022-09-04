@@ -1,7 +1,10 @@
-import { Axios } from "axios";
+import { Axios, Method } from "axios";
+import * as FormData from "form-data";
 import { Uri } from "vscode";
+import { promises } from "fs";
 import { getCredentials } from "./auth";
 import { LightFileStat } from "./lightFileStat";
+import { basename } from "path";
 
 const authenticationCookies: Record<string, string> = {};
 
@@ -192,7 +195,7 @@ export async function login(serverUrl: string, username?: string, password?: str
  *
  * @returns An object that describes the server node.
  */
- export async function getServerDescriptor(baseServerUrl: string): Promise<IItemDescriptor> {
+export async function getServerDescriptor(baseServerUrl: string): Promise<IItemDescriptor> {
     const url = getApiUrl(baseServerUrl, "api/TriumphTech/Magnus/GetServer");
     const cookie = await getAuthorizationCookie(baseServerUrl);
 
@@ -388,18 +391,39 @@ export async function updateFileContent(url: string, content: Uint8Array): Promi
 }
 
 /**
- * Requests the server to build the resources at the specified URL.
+ * Requests the server to build the resource at the specified URL.
  *
  * @param url The URL to be used for the POST request.
  */
-export async function buildUrl(url: string): Promise<void> {
+export function buildUrl(url: string): Promise<ActionResponse> {
+    return actionUrl("POST", url);
+}
+
+/**
+ * Requests the server to delete the resource at the specified URL.
+ *
+ * @param url The URL to be used for the POST request.
+ */
+export function deleteUrl(url: string): Promise<ActionResponse> {
+    return actionUrl("DELETE", url);
+}
+
+/**
+ * Requests the server to run an action at the specified URL.
+ *
+ * @param method The HTTP method verb to use for the action.
+ * @param url The URL to be used for the POST request.
+ */
+export async function actionUrl(method: Method, url: string): Promise<ActionResponse> {
     const cookie = await getAuthorizationCookie(getServerBaseUrl(url));
 
     if (cookie === null) {
         throw new Error("Unable to authorize with the server.");
     }
 
-    const result = await axios.post<ArrayBuffer>(url, undefined, {
+    const result = await axios.request<ActionResponse>({
+        method: method,
+        url: url,
         headers: {
             "Cookie": cookie
         }
@@ -417,6 +441,52 @@ export async function buildUrl(url: string): Promise<void> {
 
         throw new Error("Unexpected response received from server.");
     }
+
+    return result.data;
+}
+
+/**
+ * Requests the server to upload new file content at the specified URL.
+ *
+ * @param url The URL to be used for the POST request.
+ * @param localUris The URIs to the local files to be uploaded.
+ */
+export async function uploadUrl(url: string, localUris: Uri[]): Promise<ActionResponse> {
+    const cookie = await getAuthorizationCookie(getServerBaseUrl(url));
+
+    if (cookie === null) {
+        throw new Error("Unable to authorize with the server.");
+    }
+
+    const formData = new FormData();
+
+    for (const filePath of localUris.map(uri => uri.fsPath)) {
+        const file = await promises.readFile(filePath);
+
+        formData.append("files", file, basename(filePath));
+    }
+
+    const result = await axios.post<ActionResponse>(url, formData, {
+        headers: {
+            ... formData.getHeaders(),
+            "Cookie": cookie
+        }
+    });
+
+    if (result.status === 404) {
+        throw new Error("Requested resource was not found.");
+    }
+    else if (result.status === 403) {
+        throw new Error("Server has denied you access to this resource.");
+    }
+    else if (result.status < 200 || result.status >= 300 || !result.data) {
+        const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
+        console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
+
+        throw new Error("Unexpected response received from server.");
+    }
+
+    return result.data;
 }
 
 // #endregion

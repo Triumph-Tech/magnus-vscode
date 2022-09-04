@@ -48,6 +48,16 @@
         "category": "Magnus"
       },
       {
+        "command": "magnus.uploadUrl",
+        "title": "Upload",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnus.deleteUrl",
+        "title": "Delete",
+        "category": "Magnus"
+      },
+      {
         "command": "magnus.copyId",
         "title": "Copy Id",
         "category": "Magnus"
@@ -118,6 +128,14 @@
           "when": "false"
         },
         {
+          "command": "magnus.uploadUrl",
+          "when": "false"
+        },
+        {
+          "command": "magnus.deleteUrl",
+          "when": "false"
+        },
+        {
           "command": "magnus.copyId",
           "when": "false"
         },
@@ -147,11 +165,6 @@
       ],
       "view/item/context": [
         {
-          "command": "magnus.removeServer",
-          "group": "section1",
-          "when": "view == magnus-servers && viewItem =~ /^server_/"
-        },
-        {
           "command": "magnus.copyId",
           "group": "section1",
           "when": "view == magnus-servers && viewItem =~ /_canCopyId_/"
@@ -172,6 +185,11 @@
           "when": "view == magnus-servers && viewItem =~ /_canBuild_/"
         },
         {
+          "command": "magnus.uploadUrl",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /_canUpload_/"
+        },
+        {
           "command": "magnus.remoteView",
           "group": "section2",
           "when": "view == magnus-servers && viewItem =~ /_canView_/"
@@ -183,13 +201,23 @@
         },
         {
           "command": "magnus.refreshFolder",
-          "group": "section9",
+          "group": "section8",
           "when": "view == magnus-servers && viewItem =~ /^server_/"
         },
         {
           "command": "magnus.refreshFolder",
-          "group": "section9",
+          "group": "section8",
           "when": "view == magnus-servers && viewItem =~ /^folder_/"
+        },
+        {
+          "command": "magnus.removeServer",
+          "group": "section9",
+          "when": "view == magnus-servers && viewItem =~ /^server_/"
+        },
+        {
+          "command": "magnus.deleteUrl",
+          "group": "section9",
+          "when": "view == magnus-servers && viewItem =~ /_canDelete_/"
         }
       ]
     }
@@ -218,6 +246,7 @@
   },
   "dependencies": {
     "axios": "0.27.2",
+    "form-data": "^4.0.0",
     "keytar": "^7.9.0"
   }
 }
