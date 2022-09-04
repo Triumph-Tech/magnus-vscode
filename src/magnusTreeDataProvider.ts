@@ -220,21 +220,27 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         }
 
         // Load the light icon from the remote URI.
-        const light = await this.iconCache.getIcon(uri);
-        if (light === null) {
+        try {
+            const light = await this.iconCache.getIcon(uri);
+            if (light === null) {
+                return undefined;
+            }
+
+            // Try to load the dark icon from the remote URI.
+            let dark = darkUri ? (await this.iconCache.getIcon(darkUri)) : null;
+            if (dark === null) {
+                dark = light;
+            }
+
+            return {
+                light: vscode.Uri.parse(light),
+                dark: vscode.Uri.parse(dark)
+            };
+        }
+        catch (e) {
+            console.error(e);
             return undefined;
         }
-
-        // Try to load the dark icon from the remote URI.
-        let dark = darkUri ? (await this.iconCache.getIcon(darkUri)) : null;
-        if (dark === null) {
-            dark = light;
-        }
-
-        return {
-            light: vscode.Uri.parse(light),
-            dark: vscode.Uri.parse(dark)
-        };
     }
 
     /**
