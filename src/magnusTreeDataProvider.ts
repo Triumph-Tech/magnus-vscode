@@ -88,7 +88,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
     /** @inheritdoc */
     public async getChildren(element?: ITreeNode | undefined): Promise<ITreeNode[]> {
         if (!element) {
-            return this.getServerNodes();
+            return await this.getServerNodes();
         }
         else if (!element.itemDescriptor.uri && !element.isServer) {
             return [];
@@ -122,13 +122,26 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         await vscode.commands.executeCommand("setContext", "magnus:noServers", servers.length === 0);
     }
 
-    private getServerNodes(): ITreeNode[] {
+    /**
+     * Gets the nodes to use for the server list.
+     *
+     * @returns An array of tree node items.
+     */
+    private async getServerNodes(): Promise<ITreeNode[]> {
         const nodes: ITreeNode[] = [];
         const servers = this.context.globalState.get<string[]>("KnownServers", []);
 
         for (const server of servers) {
             try {
                 const uri = vscode.Uri.parse(server);
+                let descriptor: IItemDescriptor | null = null;
+
+                try {
+                    descriptor = await api.getServerDescriptor(server);
+                }
+                catch (e) {
+                    console.log("Failed to get server descriptor.", e);
+                }
 
                 nodes.push({
                     serverUrl: server,
@@ -139,10 +152,11 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                     }),
                     itemDescriptor: {
                         displayName: uri.authority,
-                        tooltip: uri.authority,
+                        tooltip: descriptor?.tooltip || uri.authority,
                         isFolder: true,
-                        icon: "$(server)",
-                        buildUri: "test",
+                        icon: descriptor?.icon || "$(server)",
+                        iconDark: descriptor?.iconDark || "$(server)",
+                        buildUri: descriptor?.buildUri,
                         uri: ""
                     }
                 });

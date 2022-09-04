@@ -186,6 +186,43 @@ export async function login(serverUrl: string, username?: string, password?: str
 }
 
 /**
+ * Gets the server item descriptor of the server.
+ *
+ * @param baseServerUrl The base server URL that uniquely identifies the server.
+ *
+ * @returns An object that describes the server node.
+ */
+ export async function getServerDescriptor(baseServerUrl: string): Promise<IItemDescriptor> {
+    const url = getApiUrl(baseServerUrl, "api/TriumphTech/Magnus/GetServer");
+    const cookie = await getAuthorizationCookie(baseServerUrl);
+
+    if (cookie === null) {
+        throw new Error("Unable to authorize with the server.");
+    }
+
+    const result = await axios.get<IItemDescriptor>(url, {
+        headers: {
+            "Cookie": cookie
+        }
+    });
+
+    if (result.status === 403) {
+        throw new Error("Server has denied you access to this resource.");
+    }
+    else if (result.status === 404) {
+        throw new Error("Requested resource was not found.");
+    }
+    else if (result.status < 200 || result.status >= 300 || !result.data) {
+        const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
+        console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
+
+        throw new Error("Unexpected response received from server.");
+    }
+
+    return result.data;
+}
+
+/**
  * Gets the child item descriptors of the given path on the server.
  *
  * @param baseServerUrl The base server URL that uniquely identifies the server.
