@@ -34,6 +34,8 @@ export class Commands implements vscode.Disposable {
         context.subscriptions.push(vscode.commands.registerCommand("magnus.refreshFolder", this.refreshFolder, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.removeServer", this.removeServer, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.buildUrl", this.buildUrl, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.newFile", this.newFile, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.newFolder", this.newFolder, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.uploadUrl", this.uploadUrl, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.deleteUrl", this.deleteUrl, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.copyId", this.copyId, this));
@@ -116,6 +118,24 @@ export class Commands implements vscode.Disposable {
      */
     private buildUrl(node: ITreeNode): void {
         this.events.emitBuildUrl(node);
+    }
+
+    /**
+     * Called when the person wants to create a new file.
+     *
+     * @param node The parent node the file will be created under.
+     */
+    private newFile(node: ITreeNode): void {
+        this.events.emitNewFile(node);
+    }
+
+    /**
+     * Called when the person wants to create a new folder.
+     *
+     * @param node The parent node the folder will be created under.
+     */
+    private newFolder(node: ITreeNode): void {
+        this.events.emitNewFolder(node);
     }
 
     /**

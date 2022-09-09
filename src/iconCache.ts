@@ -21,7 +21,7 @@ export class IconCache {
         }
 
         const response = await axios.get<ArrayBuffer>(uri, {
-            timeout: 2500
+            timeout: 10000
         });
 
         if (response.status !== 200) {

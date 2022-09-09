@@ -44,6 +44,15 @@ declare global {
         /** The URI to use to upload new file items. */
         uploadFileUri?: string | null;
 
+        /** The URI to use to upload a new set of recursive files (and entire folder). */
+        uploadFolderUri?: string | null;
+
+        /** The URI to use to request the server add a new (empty) file to a folder. */
+        newFileUri?: string | null;
+
+        /** The URI to use to request the server add a new folder to a parent folder. */
+        newFolderUri?: string | null;
+
         /** The URI to use in response to a "Build" action. */
         buildUri?: string | null;
 

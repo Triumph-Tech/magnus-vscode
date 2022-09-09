@@ -1,4 +1,4 @@
-import { Axios, Method } from "axios";
+import { Axios, AxiosRequestConfig, Method } from "axios";
 import * as FormData from "form-data";
 import { Uri } from "vscode";
 import { promises } from "fs";
@@ -409,25 +409,58 @@ export function deleteUrl(url: string): Promise<ActionResponse> {
 }
 
 /**
+ * Requests the server to create a new file in the given folder.
+ *
+ * @param url The URL to be used for the POST request.
+ * @param filename The name of the file that should be created.
+ */
+export function createNewFile(url: string, filename: string): Promise<ActionResponse> {
+    return actionUrl("POST", url, filename, request => {
+        request.headers!.contentType = "text/plain";
+    });
+}
+
+/**
+ * Requests the server to create a new folder in the given parent folder.
+ *
+ * @param url The URL to be used for the POST request.
+ * @param name The name of the folder that should be created.
+ */
+export function createNewFolder(url: string, name: string): Promise<ActionResponse> {
+    return actionUrl("POST", url, name, request => {
+        request.headers!.contentType = "text/plain";
+    });
+}
+
+/**
  * Requests the server to run an action at the specified URL.
  *
  * @param method The HTTP method verb to use for the action.
  * @param url The URL to be used for the POST request.
  */
-export async function actionUrl(method: Method, url: string): Promise<ActionResponse> {
+export async function actionUrl(method: Method, url: string, data?: unknown, updateRequest?: ((request: AxiosRequestConfig) => void)): Promise<ActionResponse> {
     const cookie = await getAuthorizationCookie(getServerBaseUrl(url));
 
     if (cookie === null) {
         throw new Error("Unable to authorize with the server.");
     }
 
-    const result = await axios.request<ActionResponse>({
+    const requestConfig: AxiosRequestConfig = {
         method: method,
         url: url,
+        data: data,
         headers: {
             "Cookie": cookie
-        }
-    });
+        },
+        timeout: 30000
+    };
+
+    if (updateRequest) {
+        updateRequest(requestConfig);
+    }
+
+    const result = await axios.request<ActionResponse>(requestConfig);
+    console.log(result);
 
     if (result.status === 404) {
         throw new Error("Requested resource was not found.");
@@ -452,12 +485,6 @@ export async function actionUrl(method: Method, url: string): Promise<ActionResp
  * @param localUris The URIs to the local files to be uploaded.
  */
 export async function uploadUrl(url: string, localUris: Uri[]): Promise<ActionResponse> {
-    const cookie = await getAuthorizationCookie(getServerBaseUrl(url));
-
-    if (cookie === null) {
-        throw new Error("Unable to authorize with the server.");
-    }
-
     const formData = new FormData();
 
     for (const filePath of localUris.map(uri => uri.fsPath)) {
@@ -466,27 +493,12 @@ export async function uploadUrl(url: string, localUris: Uri[]): Promise<ActionRe
         formData.append("files", file, basename(filePath));
     }
 
-    const result = await axios.post<ActionResponse>(url, formData, {
-        headers: {
-            ... formData.getHeaders(),
-            "Cookie": cookie
-        }
+    return await actionUrl("POST", url, formData, request => {
+        request.headers = {
+            ...formData.getHeaders(),
+            ...request.headers
+        };
     });
-
-    if (result.status === 404) {
-        throw new Error("Requested resource was not found.");
-    }
-    else if (result.status === 403) {
-        throw new Error("Server has denied you access to this resource.");
-    }
-    else if (result.status < 200 || result.status >= 300 || !result.data) {
-        const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
-        console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
-
-        throw new Error("Unexpected response received from server.");
-    }
-
-    return result.data;
 }
 
 // #endregion

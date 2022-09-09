@@ -31,6 +31,8 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         this.events.onRefreshFolder(this.onRefreshFolder.bind(this));
         this.events.onBuildUrl(this.onBuildUrl.bind(this));
         this.events.onUploadUrl(this.onUploadUrl.bind(this));
+        this.events.onNewFile(this.onNewFile.bind(this));
+        this.events.onNewFolder(this.onNewFolder.bind(this));
         this.events.onDeleteUrl(this.onDeleteUrl.bind(this));
         this.events.onCopyId(this.onCopyId.bind(this));
         this.events.onCopyGuid(this.onCopyGuid.bind(this));
@@ -55,7 +57,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
     /** @inheritdoc */
     public async getTreeItem(element: ITreeNode): Promise<vscode.TreeItem> {
-        const iconPath = await this.getTreeItemIconPair(element.itemDescriptor.icon, element.itemDescriptor.iconDark);
+        const iconPath = await this.getTreeItemIconPair(element.serverUrl, element.itemDescriptor.icon, element.itemDescriptor.iconDark);
 
         this.treeNodeTable[element.resource.toString()] = element;
 
@@ -213,6 +215,18 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
             context = `${context}canEdit_`;
         }
 
+        if (node.itemDescriptor.deleteUri) {
+            context = `${context}canDelete_`;
+        }
+
+        if (node.itemDescriptor.newFileUri) {
+            context = `${context}canNewFile_`;
+        }
+
+        if (node.itemDescriptor.newFolderUri) {
+            context = `${context}canNewFolder_`;
+        }
+
         if (node.itemDescriptor.uploadFileUri) {
             context = `${context}canUpload_`;
         }
@@ -227,12 +241,13 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
     /**
      * Gets the icon path element for a tree item.
      *
+     * @param serverUrl The URL of the server when the icon path does not contain a scheme and host.
      * @param uri The URI of the icon. This should be changed to the object interface.
      * @param darkUri The URI of the icon. This should be changed to the object interface.
      *
      * @returns The iconPath object that can be used for a TreeItem.
      */
-    private async getTreeItemIconPair(uri?: string | null, darkUri?: string | null): Promise<string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } | vscode.ThemeIcon | undefined> {
+    private async getTreeItemIconPair(serverUrl: string, uri?: string | null, darkUri?: string | null): Promise<string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } | vscode.ThemeIcon | undefined> {
         if (!uri) {
             return undefined;
         }
@@ -245,13 +260,13 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         // Load the light icon from the remote URI.
         try {
-            const light = await this.iconCache.getIcon(uri);
+            const light = await this.iconCache.getIcon(this.getFullyQualifiedUrl(serverUrl, uri));
             if (light === null) {
                 return undefined;
             }
 
             // Try to load the dark icon from the remote URI.
-            let dark = darkUri ? (await this.iconCache.getIcon(darkUri)) : null;
+            let dark = darkUri ? (await this.iconCache.getIcon(this.getFullyQualifiedUrl(serverUrl, darkUri))) : null;
             if (dark === null) {
                 dark = light;
             }
@@ -320,6 +335,28 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         }).toString();
     }
 
+    /**
+     * Ensures that the URL is fully qualified with a scheme and host. If not
+     * then it will use the scheme and host from the server URL.
+     *
+     * @param serverUrl The server associated with this URL.
+     * @param url The URL that will be checked to see if it is fully qualified.
+     *
+     * @returns A new string that is fully qualified if the original was not.
+     */
+    private getFullyQualifiedUrl(serverUrl: string, url: string): string {
+        if (url.includes("://")) {
+            return url;
+        }
+
+        if (!url.startsWith("/")) {
+            return `${serverUrl}/${url.substring}`;
+        }
+        else {
+            return `${serverUrl}${url}`;
+        }
+    }
+
     // #endregion
 
     // #region Event Handlers
@@ -347,11 +384,11 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
      * @param item The node item that should be built.
      */
     private onBuildUrl(item: ITreeNode): void {
-        const buildUrl = item.itemDescriptor.buildUri;
-
-        if (!buildUrl) {
+        if (!item.itemDescriptor.buildUri) {
             return;
         }
+
+        const buildUrl = this.getFullyQualifiedUrl(item.serverUrl, item.itemDescriptor.buildUri);
 
         const options: vscode.ProgressOptions = {
             cancellable: false,
@@ -387,17 +424,137 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
     }
 
     /**
+     * Called when a node should be built by the server. Perform a POST
+     * operation to the specified callback URL.
+     *
+     * @param item The node item that should be built.
+     */
+    private async onNewFile(item: ITreeNode): Promise<void> {
+        if (!item.itemDescriptor.newFileUri) {
+            return;
+        }
+
+        const url = this.getFullyQualifiedUrl(item.serverUrl, item.itemDescriptor.newFileUri);
+
+        const name = await vscode.window.showInputBox({
+            title: "Please enter the name of the file to create."
+        });
+
+        if (!name) {
+            return;
+        }
+
+        const options: vscode.ProgressOptions = {
+            cancellable: false,
+            location: vscode.ProgressLocation.Notification,
+            title: `Creating ${name}`
+        };
+
+        vscode.window.withProgress(options, async progress => {
+            try {
+                const response = await api.createNewFile(url, name);
+
+                if (response.actionSuccessful) {
+                    progress.report({
+                        message: response.responseMessage || "Complete"
+                    });
+                }
+                else {
+                    progress.report({
+                        message: "Complete"
+                    });
+
+                    vscode.window.showErrorMessage(response.responseMessage || "Failed to create new file.");
+                }
+
+                const parentItem = this.parentItemLookup[item.resource.toString()];
+
+                if (parentItem) {
+                    this.didChangeTreeData.fire(parentItem);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            catch (error) {
+                if (error instanceof Error) {
+                    vscode.window.showErrorMessage(error.message);
+                }
+            }
+        });
+    }
+
+    /**
+     * Called when a node should be built by the server. Perform a POST
+     * operation to the specified callback URL.
+     *
+     * @param item The node item that should be built.
+     */
+     private async onNewFolder(item: ITreeNode): Promise<void> {
+        if (!item.itemDescriptor.newFolderUri) {
+            return;
+        }
+
+        const url = this.getFullyQualifiedUrl(item.serverUrl, item.itemDescriptor.newFolderUri);
+
+        const name = await vscode.window.showInputBox({
+            title: "Please enter the name of the folder to create."
+        });
+
+        if (!name) {
+            return;
+        }
+
+        const options: vscode.ProgressOptions = {
+            cancellable: false,
+            location: vscode.ProgressLocation.Notification,
+            title: `Creating ${name}`
+        };
+
+        vscode.window.withProgress(options, async progress => {
+            try {
+                const response = await api.createNewFolder(url, name);
+
+                if (response.actionSuccessful) {
+                    progress.report({
+                        message: response.responseMessage || "Complete"
+                    });
+                }
+                else {
+                    progress.report({
+                        message: "Complete"
+                    });
+
+                    vscode.window.showErrorMessage(response.responseMessage || "Failed to create new folder.");
+                }
+
+                const parentItem = this.parentItemLookup[item.resource.toString()];
+
+                if (parentItem) {
+                    this.didChangeTreeData.fire(parentItem);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            catch (error) {
+                if (error instanceof Error) {
+                    vscode.window.showErrorMessage(error.message);
+                }
+            }
+        });
+    }
+
+    /**
      * Called when a node should have new files uploaded to it. Perform a POST
      * operation to the specified callback URL.
      *
      * @param item The node item that should be built.
      */
     private async onUploadUrl(item: ITreeNode): Promise<void> {
-        const uploadUrl = item.itemDescriptor.uploadFileUri;
-
-        if (!uploadUrl) {
+        if (!item.itemDescriptor.uploadFileUri) {
             return;
         }
+
+        const uploadUrl = this.getFullyQualifiedUrl(item.serverUrl, item.itemDescriptor.uploadFileUri);
 
         const fileUris = await vscode.window.showOpenDialog({
             canSelectFiles: true,
@@ -432,6 +589,12 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                     vscode.window.showErrorMessage(response.responseMessage || "Upload failed.");
                 }
 
+                const parentItem = this.parentItemLookup[item.resource.toString()];
+
+                if (parentItem) {
+                    this.didChangeTreeData.fire(parentItem);
+                }
+
                 await new Promise(resolve => setTimeout(resolve, 2000));
             }
             catch (error) {
@@ -449,11 +612,12 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
      * @param item The node item that should be built.
      */
     private async onDeleteUrl(item: ITreeNode): Promise<void> {
-        const deleteUrl = item.itemDescriptor.deleteUri;
-
-        if (!deleteUrl) {
+        if (!item.itemDescriptor.deleteUri) {
             return;
         }
+
+        const deleteUrl = this.getFullyQualifiedUrl(item.serverUrl, item.itemDescriptor.deleteUri);
+        console.log("deleteUrl", deleteUrl);
 
         const verificationResult = await vscode.window.showInformationMessage(`Do you really want to delete '${item.itemDescriptor.displayName}'?`, {
             modal: true
@@ -486,13 +650,13 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                     vscode.window.showErrorMessage(response.responseMessage || "Delete failed.");
                 }
 
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
                 const parentItem = this.parentItemLookup[item.resource.toString()];
 
                 if (parentItem) {
                     this.didChangeTreeData.fire(parentItem);
                 }
+
+                await new Promise(resolve => setTimeout(resolve, 2000));
             }
             catch (error) {
                 if (error instanceof Error) {
@@ -541,9 +705,13 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
      * @param item The item whose value should be copied.
      */
     private onRemoteView(item: ITreeNode): void {
-        if (item.itemDescriptor.remoteViewUri) {
-            vscode.env.openExternal(vscode.Uri.parse(item.itemDescriptor.remoteViewUri));
+        if (!item.itemDescriptor.remoteViewUri) {
+            return;
         }
+
+        const url = this.getFullyQualifiedUrl(item.serverUrl, item.itemDescriptor.remoteViewUri);
+
+        vscode.env.openExternal(vscode.Uri.parse(url));
     }
 
     /**
@@ -552,9 +720,13 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
      * @param item The item whose value should be copied.
      */
     private onRemoteEdit(item: ITreeNode): void {
-        if (item.itemDescriptor.remoteEditUri) {
-            vscode.env.openExternal(vscode.Uri.parse(item.itemDescriptor.remoteEditUri));
+        if (!item.itemDescriptor.remoteEditUri) {
+            return;
         }
+
+        const url = this.getFullyQualifiedUrl(item.serverUrl, item.itemDescriptor.remoteEditUri);
+
+        vscode.env.openExternal(vscode.Uri.parse(url));
     }
 
     // #endregion

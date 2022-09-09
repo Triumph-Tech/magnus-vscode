@@ -142,7 +142,9 @@
           "PascalCase"
         ]
       }
-    ]
+    ],
+    // Allow non-null assertions. Developer should know what they are doing.
+    "@typescript-eslint/no-non-null-assertion": "off"
   },
   "ignorePatterns": [
     "out",

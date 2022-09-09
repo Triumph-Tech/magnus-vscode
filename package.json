@@ -48,6 +48,16 @@
         "category": "Magnus"
       },
       {
+        "command": "magnus.newFile",
+        "title": "New File",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnus.newFolder",
+        "title": "New Folder",
+        "category": "Magnus"
+      },
+      {
         "command": "magnus.uploadUrl",
         "title": "Upload",
         "category": "Magnus"
@@ -128,6 +138,14 @@
           "when": "false"
         },
         {
+          "command": "magnus.newFile",
+          "when": "false"
+        },
+        {
+          "command": "magnus.newFolder",
+          "when": "false"
+        },
+        {
           "command": "magnus.uploadUrl",
           "when": "false"
         },
@@ -183,6 +201,16 @@
           "command": "magnus.buildUrl",
           "group": "section2",
           "when": "view == magnus-servers && viewItem =~ /_canBuild_/"
+        },
+        {
+          "command": "magnus.newFile",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /_canNewFile_/"
+        },
+        {
+          "command": "magnus.newFolder",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /_canNewFolder_/"
         },
         {
           "command": "magnus.uploadUrl",
