@@ -2,8 +2,8 @@
   "name": "magnus",
   "displayName": "Magnus",
   "publisher": "TriumphTech",
-  "description": "",
-  "version": "0.9.0",
+  "description": "Triumph Tech’s Magnus Editor is a full-featured remote editor for Rock RMS.",
+  "version": "0.9.1",
   "license": "mit",
   "repository": {
     "type": "git",
