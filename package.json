@@ -266,9 +266,10 @@
   },
   "scripts": {
     "vscode:prepublish": "webpack --mode production",
-    "compile": "webpack --mode development",
+    "build": "webpack --mode development",
     "watch": "tsc -p ./ --watch",
-    "pretest": "npm run compile && npm run lint",
+    "package": "vsce package",
+    "pretest": "npm run build && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"
   },
