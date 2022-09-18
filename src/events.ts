@@ -26,6 +26,9 @@ enum EventName {
     /** An item in the tree should have a new file uploaded to it. */
     UploadUrl = "uploadUrl",
 
+    /** An item in the tree should have a new folder uploaded to it. */
+    UploadFolderUrl = "uploadFolderUrl",
+
     /** An item in the tree should be deleted. */
     DeleteUrl = "deleteUrl",
 
@@ -127,7 +130,6 @@ export class Events implements Disposable {
         this.eventEmitter?.on(EventName.NewFolder, listener);
     }
 
-
     /**
      * Subscribe to the upload URL event. These callbacks are called when
      * the person activates the Upload command for a tree node.
@@ -136,6 +138,16 @@ export class Events implements Disposable {
      */
     public onUploadUrl(listener: ((node: ITreeNode) => void)): void {
         this.eventEmitter?.on(EventName.UploadUrl, listener);
+    }
+
+    /**
+     * Subscribe to the upload folder URL event. These callbacks are called
+     * when the person activates the Upload Folder command for a tree node.
+     *
+     * @param listener The callback to be called.
+     */
+     public onUploadFolderUrl(listener: ((node: ITreeNode) => void)): void {
+        this.eventEmitter?.on(EventName.UploadFolderUrl, listener);
     }
 
     /**
@@ -262,6 +274,16 @@ export class Events implements Disposable {
      */
     public emitUploadUrl(node: ITreeNode): void {
         this.eventEmitter?.emit(EventName.UploadUrl, node);
+    }
+
+    /**
+     * Emit the upload folder URL event. This should be called when the
+     * person activates the Upload Folder command on a tree node.
+     *
+     * @param node The node that should be built.
+     */
+     public emitUploadFolderUrl(node: ITreeNode): void {
+        this.eventEmitter?.emit(EventName.UploadFolderUrl, node);
     }
 
     /**

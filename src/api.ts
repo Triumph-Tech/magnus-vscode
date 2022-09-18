@@ -2,6 +2,7 @@ import { Axios, AxiosRequestConfig, Method } from "axios";
 import * as FormData from "form-data";
 import { Uri } from "vscode";
 import { promises } from "fs";
+import { join as pathJoin } from "path";
 import { getCredentials } from "./auth";
 import { LightFileStat } from "./lightFileStat";
 import { basename } from "path";
@@ -492,6 +493,57 @@ export async function uploadUrl(url: string, localUris: Uri[]): Promise<ActionRe
 
         formData.append("files", file, basename(filePath));
     }
+
+    return await actionUrl("POST", url, formData, request => {
+        request.headers = {
+            ...formData.getHeaders(),
+            ...request.headers
+        };
+    });
+}
+
+/**
+ * Requests the server to upload a folder to the specified URL.
+ *
+ * @param url The URL to be used for the POST request.
+ * @param localUri The URI to the local folder to be uploaded.
+ */
+export async function uploadFolderUrl(url: string, localUri: Uri): Promise<ActionResponse> {
+    const formData = new FormData();
+    let fileCount = 0;
+    let totalSize = 0;
+
+    async function appendDirectory(path: string, relativePath: string[]): Promise<void> {
+        const childNames = await promises.readdir(path);
+
+        for (const childName of childNames) {
+            const childPath = pathJoin(path, childName);
+            const childStat = await promises.stat(childPath);
+
+            if (childStat.isFile()) {
+                fileCount++;
+                totalSize += childStat.size;
+
+                if (fileCount > 10_000) {
+                    throw new Error("Cannot upload more than 10,000 files at one time.");
+                }
+
+                if (totalSize > 100_000_000) {
+                    throw new Error("Cannot upload more than 100MB at one time.");
+                }
+
+                const file = await promises.readFile(childPath);
+                formData.append("files", file, {
+                    filepath: [...relativePath, childName].join("/")
+                });
+            }
+            else if (childStat.isDirectory()) {
+                await appendDirectory(childPath, [...relativePath, childName]);
+            }
+        }
+    }
+
+    await appendDirectory(localUri.fsPath, []);
 
     return await actionUrl("POST", url, formData, request => {
         request.headers = {

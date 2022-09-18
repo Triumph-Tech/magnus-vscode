@@ -63,6 +63,11 @@
         "category": "Magnus"
       },
       {
+        "command": "magnus.uploadFolderUrl",
+        "title": "Upload Folder",
+        "category": "Magnus"
+      },
+      {
         "command": "magnus.deleteUrl",
         "title": "Delete",
         "category": "Magnus"
@@ -150,6 +155,10 @@
           "when": "false"
         },
         {
+          "command": "magnus.uploadFolderUrl",
+          "when": "false"
+        },
+        {
           "command": "magnus.deleteUrl",
           "when": "false"
         },
@@ -216,6 +225,11 @@
           "command": "magnus.uploadUrl",
           "group": "section2",
           "when": "view == magnus-servers && viewItem =~ /_canUpload_/"
+        },
+        {
+          "command": "magnus.uploadFolderUrl",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /_canUploadFolder_/"
         },
         {
           "command": "magnus.remoteView",

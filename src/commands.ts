@@ -37,6 +37,7 @@ export class Commands implements vscode.Disposable {
         context.subscriptions.push(vscode.commands.registerCommand("magnus.newFile", this.newFile, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.newFolder", this.newFolder, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.uploadUrl", this.uploadUrl, this));
+        context.subscriptions.push(vscode.commands.registerCommand("magnus.uploadFolderUrl", this.uploadFolderUrl, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.deleteUrl", this.deleteUrl, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.copyId", this.copyId, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.copyGuid", this.copyGuid, this));
@@ -139,12 +140,21 @@ export class Commands implements vscode.Disposable {
     }
 
     /**
-     * Called when the person wants to uploaded to the specified node.
+     * Called when the person wants to upload a file to the specified node.
      *
      * @param node The node to be built.
      */
     private uploadUrl(node: ITreeNode): void {
         this.events.emitUploadUrl(node);
+    }
+
+    /**
+     * Called when the person wants to upload a folder to the specified node.
+     *
+     * @param node The node to be built.
+     */
+    private uploadFolderUrl(node: ITreeNode): void {
+        this.events.emitUploadFolderUrl(node);
     }
 
     /**

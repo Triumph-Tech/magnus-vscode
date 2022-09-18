@@ -31,6 +31,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         this.events.onRefreshFolder(this.onRefreshFolder.bind(this));
         this.events.onBuildUrl(this.onBuildUrl.bind(this));
         this.events.onUploadUrl(this.onUploadUrl.bind(this));
+        this.events.onUploadFolderUrl(this.onUploadFolderUrl.bind(this));
         this.events.onNewFile(this.onNewFile.bind(this));
         this.events.onNewFolder(this.onNewFolder.bind(this));
         this.events.onDeleteUrl(this.onDeleteUrl.bind(this));
@@ -169,6 +170,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                         iconDark: descriptor?.iconDark || "$(server)",
                         buildUri: descriptor?.buildUri,
                         uploadFileUri: descriptor?.uploadFileUri,
+                        uploadFolderUri: descriptor?.uploadFolderUri,
                         uri: ""
                     }
                 });
@@ -229,6 +231,10 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         if (node.itemDescriptor.uploadFileUri) {
             context = `${context}canUpload_`;
+        }
+
+        if (node.itemDescriptor.uploadFolderUri) {
+            context = `${context}canUploadFolder_`;
         }
 
         if (node.itemDescriptor.buildUri) {
@@ -575,6 +581,68 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         vscode.window.withProgress(options, async progress => {
             try {
                 const response = await api.uploadUrl(uploadUrl, fileUris);
+
+                if (response.actionSuccessful) {
+                    progress.report({
+                        message: response.responseMessage || "Complete"
+                    });
+                }
+                else {
+                    progress.report({
+                        message: "Complete"
+                    });
+
+                    vscode.window.showErrorMessage(response.responseMessage || "Upload failed.");
+                }
+
+                const parentItem = this.parentItemLookup[item.resource.toString()];
+
+                if (parentItem) {
+                    this.didChangeTreeData.fire(parentItem);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            catch (error) {
+                if (error instanceof Error) {
+                    vscode.window.showErrorMessage(error.message);
+                }
+            }
+        });
+    }
+
+    /**
+     * Called when a node should have a folder uploaded to it. Perform a POST
+     * operation to the specified callback URL.
+     *
+     * @param item The node item that should be built.
+     */
+     private async onUploadFolderUrl(item: ITreeNode): Promise<void> {
+        if (!item.itemDescriptor.uploadFolderUri) {
+            return;
+        }
+
+        const uploadUrl = this.getFullyQualifiedUrl(item.serverUrl, item.itemDescriptor.uploadFolderUri);
+
+        const fileUris = await vscode.window.showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false
+        });
+
+        if (!fileUris || fileUris.length !== 1) {
+            return;
+        }
+
+        const options: vscode.ProgressOptions = {
+            cancellable: false,
+            location: vscode.ProgressLocation.Notification,
+            title: `Uploading to ${item.itemDescriptor.displayName}`
+        };
+
+        vscode.window.withProgress(options, async progress => {
+            try {
+                const response = await api.uploadFolderUrl(uploadUrl, fileUris[0]);
 
                 if (response.actionSuccessful) {
                     progress.report({
