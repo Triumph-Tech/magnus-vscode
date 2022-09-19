@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="279" src="docs/magnus-vscode.png">
+  <img width="400" src="docs/magnus-vscode.png">
 </p>
 
 # Magnus Visual Studio Code Editor for Rock RMS 
