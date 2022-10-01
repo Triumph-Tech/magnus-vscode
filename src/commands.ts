@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
-import * as api from "./api";
-import { deleteCredentials, saveCredentials } from "./auth";
+import { Secrets } from "./secrets";
 import { Events } from "./events";
+import { Api } from "./api";
 
 /**
  * Configures and responds to the general purpose commands used by the extension.
@@ -15,6 +15,12 @@ export class Commands implements vscode.Disposable {
     /** The Events object that we use to subscribe to events. */
     private events: Events;
 
+    /** The Secrets object that will handle secret storage for us. */
+    private secrets: Secrets;
+
+    /** The Api object that will handle communication with the server. */
+    private api: Api;
+
     // #endregion
 
     // #region Constructors
@@ -25,10 +31,14 @@ export class Commands implements vscode.Disposable {
      *
      * @param context The context that identifies our extension instance.
      * @param events The events object that we will use to communicate with the rest of the system.
+     * @param secrets The secrets object that will handle secure storage.
+     * @param api The Api object that will handle communication with the server.
      */
-    public constructor(context: vscode.ExtensionContext, events: Events) {
+    public constructor(context: vscode.ExtensionContext, events: Events, secrets: Secrets, api: Api) {
         this.context = context;
         this.events = events;
+        this.secrets = secrets;
+        this.api = api;
 
         context.subscriptions.push(vscode.commands.registerCommand("magnus.addServer", this.addServer, this));
         context.subscriptions.push(vscode.commands.registerCommand("magnus.refreshFolder", this.refreshFolder, this));
@@ -91,12 +101,12 @@ export class Commands implements vscode.Disposable {
             return;
         }
 
-        if (!api.login(serverUrl, username, password)) {
+        if (!this.api.login(serverUrl, username, password)) {
             await vscode.window.showErrorMessage("Unable to login. Please check server URL and credentials and try again.");
             return;
         }
 
-        await saveCredentials(serverUrl, username, password);
+        await this.secrets.saveCredentials(serverUrl, username, password);
         knownServers.push(serverUrl);
 
         this.context.globalState.update("KnownServers", knownServers);
@@ -237,7 +247,7 @@ export class Commands implements vscode.Disposable {
         this.context.globalState.update("KnownServers", knownServers);
         this.events.emitServerAdded();
 
-        await deleteCredentials(node.serverUrl);
+        await this.secrets.deleteCredentials(node.serverUrl);
     }
 
     // #endregion

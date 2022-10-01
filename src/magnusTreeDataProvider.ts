@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import * as vscode from "vscode";
-import * as api from "./api";
+import { Api } from "./api";
 import { Events } from "./events";
 import { IconCache } from "./iconCache";
 
@@ -11,6 +11,7 @@ const customUriSchemeSecure = "ttmagnuss";
 export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDataProvider<ITreeNode | undefined>, vscode.FileSystemProvider {
     private context: vscode.ExtensionContext;
     private events?: Events;
+    private api: Api;
     private iconCache: IconCache = new IconCache();
     private didChangeTreeData: vscode.EventEmitter<ITreeNode | undefined> = new vscode.EventEmitter<ITreeNode | undefined>();
     private treeNodeTable: Record<string, ITreeNode> = {};
@@ -18,9 +19,10 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
     // #region Constructors
 
-    public constructor(context: vscode.ExtensionContext, events: Events) {
+    public constructor(context: vscode.ExtensionContext, events: Events, api: Api) {
         this.context = context;
         this.events = events;
+        this.api = api;
 
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(customUriSchemeInsecure, this));
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(customUriSchemeSecure, this));
@@ -100,7 +102,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
             return [];
         }
         else {
-            const childItemDescriptors = await api.getChildItems(element.serverUrl, element.itemDescriptor.uri ?? "");
+            const childItemDescriptors = await this.api.getChildItems(element.serverUrl, element.itemDescriptor.uri ?? "");
 
             const items = childItemDescriptors.map(item => {
                 return {
@@ -149,7 +151,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                 let descriptor: IItemDescriptor | null = null;
 
                 try {
-                    descriptor = await api.getServerDescriptor(server);
+                    descriptor = await this.api.getServerDescriptor(server);
                 }
                 catch (e) {
                     console.log("Failed to get server descriptor.", e);
@@ -404,7 +406,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         vscode.window.withProgress(options, async progress => {
             try {
-                const response = await api.buildUrl(buildUrl);
+                const response = await this.api.buildUrl(buildUrl);
 
                 if (response.actionSuccessful) {
                     progress.report({
@@ -458,7 +460,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         vscode.window.withProgress(options, async progress => {
             try {
-                const response = await api.createNewFile(url, name);
+                const response = await this.api.createNewFile(url, name);
 
                 if (response.actionSuccessful) {
                     progress.report({
@@ -518,7 +520,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         vscode.window.withProgress(options, async progress => {
             try {
-                const response = await api.createNewFolder(url, name);
+                const response = await this.api.createNewFolder(url, name);
 
                 if (response.actionSuccessful) {
                     progress.report({
@@ -580,7 +582,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         vscode.window.withProgress(options, async progress => {
             try {
-                const response = await api.uploadUrl(uploadUrl, fileUris);
+                const response = await this.api.uploadUrl(uploadUrl, fileUris);
 
                 if (response.actionSuccessful) {
                     progress.report({
@@ -642,7 +644,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         vscode.window.withProgress(options, async progress => {
             try {
-                const response = await api.uploadFolderUrl(uploadUrl, fileUris[0]);
+                const response = await this.api.uploadFolderUrl(uploadUrl, fileUris[0]);
 
                 if (response.actionSuccessful) {
                     progress.report({
@@ -703,7 +705,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         vscode.window.withProgress(options, async progress => {
             try {
-                const response = await api.deleteUrl(deleteUrl);
+                const response = await this.api.deleteUrl(deleteUrl);
 
                 if (response.actionSuccessful) {
                     progress.report({
@@ -820,7 +822,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
     public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
         const url = this.getWebUrlFromResource(uri);
 
-        return await api.getFileStat(url);
+        return await this.api.getFileStat(url);
     }
 
     /** @inheritdoc */
@@ -837,14 +839,14 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
     public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
         const url = this.getWebUrlFromResource(uri);
 
-        return await api.getFileContent(url);
+        return await this.api.getFileContent(url);
     }
 
     /** @inheritdoc */
     public async writeFile(uri: vscode.Uri, content: Uint8Array, _options: { readonly create: boolean; readonly overwrite: boolean; }): Promise<void> {
         const url = this.getWebUrlFromResource(uri);
 
-        await api.updateFileContent(url, content);
+        await this.api.updateFileContent(url, content);
     }
 
     /** @inheritdoc */
