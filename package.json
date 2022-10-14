@@ -14,6 +14,9 @@
     "color": "#0A2540",
     "theme": "light"
   },
+  "bugs": {
+    "url": "https://github.com/Triumph-Tech/magnus-vscode/issues"
+  },
   "engines": {
     "vscode": "^1.69.0"
   },
