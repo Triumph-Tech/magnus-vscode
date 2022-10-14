@@ -9,6 +9,11 @@
     "type": "git",
     "url": "https://github.com/triumph-tech/magnus-vscode.git"
   },
+  "icon": "resources/marketplace-icon.png",
+  "galleryBanner": {
+    "color": "#0A2540",
+    "theme": "light"
+  },
   "engines": {
     "vscode": "^1.69.0"
   },
