@@ -12,7 +12,7 @@
   "icon": "resources/marketplace-icon.png",
   "galleryBanner": {
     "color": "#0A2540",
-    "theme": "light"
+    "theme": "dark"
   },
   "bugs": {
     "url": "https://github.com/Triumph-Tech/magnus-vscode/issues"
