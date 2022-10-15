@@ -31,6 +31,14 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "csharp",
+        "extensions": [
+          ".rckcs"
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "magnus.addServer",
