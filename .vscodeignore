@@ -12,3 +12,9 @@ vsc-extension-quickstart.md
 .github
 node_modules
 webpack.config.js
+
+# The results panel webview loads these two assets directly through
+# asWebviewUri, so they are not part of the webpack bundle and have to survive
+# the "src/**" exclusion above.
+!src/sql/webview/results.js
+!src/sql/webview/results.css

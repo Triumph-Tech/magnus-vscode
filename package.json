@@ -3,7 +3,7 @@
   "displayName": "Magnus",
   "publisher": "TriumphTech",
   "description": "Triumph Tech’s Magnus Editor is a full-featured remote editor for Rock RMS.",
-  "version": "1.2.0-beta.3",
+  "version": "1.2.0",
   "license": "mit",
   "repository": {
     "type": "git",
@@ -31,7 +31,14 @@
     "onCommand:magnus.openWalkthrough",
     "onWalkthrough:magnus.gettingStarted",
     "workspaceContains:**/magnus.json",
-    "workspaceContains:**/.magnus/manifest.json"
+    "workspaceContains:**/.magnus/manifest.json",
+    "onCommand:magnus.sql.goToTable",
+    "onCommand:magnus.sql.newQuery",
+    "onCommand:magnus.sql.scratchQuery",
+    "onCommand:magnus.sql.selectTop1000",
+    "onCommand:magnus.sql.showHistory",
+    "onCommand:magnus.sql.clearHistory",
+    "onLanguage:sql"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -211,6 +218,78 @@
         "title": "Connect Workspace Server…",
         "category": "Magnus",
         "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "magnus.sql.goToTable",
+        "title": "Go to Table",
+        "category": "Magnus SQL",
+        "icon": "$(search)"
+      },
+      {
+        "command": "magnus.sql.refreshObjectExplorer",
+        "title": "Refresh",
+        "category": "Magnus SQL",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "magnus.sql.newQuery",
+        "title": "New Query",
+        "category": "Magnus SQL",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "magnus.sql.scratchQuery",
+        "title": "Scratch Query",
+        "category": "Magnus SQL",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "magnus.sql.selectTop1000",
+        "title": "Select Top 1000",
+        "category": "Magnus SQL",
+        "icon": "$(play)"
+      },
+      {
+        "command": "magnus.sql.runQuery",
+        "title": "Run Query",
+        "category": "Magnus SQL",
+        "icon": "$(play)"
+      },
+      {
+        "command": "magnus.sql.runStatement",
+        "title": "Run Statement Under Cursor",
+        "category": "Magnus SQL",
+        "icon": "$(play)"
+      },
+      {
+        "command": "magnus.sql.cancelQuery",
+        "title": "Cancel Query",
+        "category": "Magnus SQL",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "magnus.sql.rebindDocument",
+        "title": "Change Query Server",
+        "category": "Magnus SQL",
+        "icon": "$(database)"
+      },
+      {
+        "command": "magnus.sql.setServerEnvironment",
+        "title": "Set Server Environment",
+        "category": "Magnus SQL",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "magnus.sql.showHistory",
+        "title": "Query History",
+        "category": "Magnus SQL",
+        "icon": "$(history)"
+      },
+      {
+        "command": "magnus.sql.clearHistory",
+        "title": "Clear Query History",
+        "category": "Magnus SQL",
+        "icon": "$(clear-all)"
       }
     ],
     "viewsContainers": {
@@ -351,6 +430,26 @@
         {
           "command": "magnusLocal.connectWorkspaceServer",
           "when": "magnusLocal:serverDisconnected"
+        },
+        {
+          "command": "magnus.sql.refreshObjectExplorer",
+          "when": "false"
+        },
+        {
+          "command": "magnus.sql.selectTop1000",
+          "when": "false"
+        },
+        {
+          "command": "magnus.sql.rebindDocument",
+          "when": "editorLangId == sql"
+        },
+        {
+          "command": "magnus.sql.runQuery",
+          "when": "editorLangId == sql"
+        },
+        {
+          "command": "magnus.sql.runStatement",
+          "when": "editorLangId == sql"
         }
       ],
       "view/title": [
@@ -461,6 +560,75 @@
           "command": "magnus.deleteUrl",
           "group": "section9",
           "when": "view == magnus-servers && viewItem =~ /_canDelete_/"
+        },
+        {
+          "command": "magnus.sql.goToTable",
+          "group": "section1",
+          "when": "view == magnus-servers && viewItem =~ /_canGoToTable_/"
+        },
+        {
+          "command": "magnus.sql.refreshObjectExplorer",
+          "group": "section8",
+          "when": "view == magnus-servers && viewItem =~ /_canRefreshSql_/"
+        },
+        {
+          "command": "magnus.sql.selectTop1000",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /_canSelectTop1000_/"
+        },
+        {
+          "command": "magnus.sql.newQuery",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /^sqlRoot/"
+        },
+        {
+          "command": "magnus.sql.newQuery",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /^server_/"
+        },
+        {
+          "command": "magnus.sql.setServerEnvironment",
+          "group": "section8",
+          "when": "view == magnus-servers && viewItem =~ /^server_/"
+        },
+        {
+          "command": "magnus.sql.setServerEnvironment",
+          "group": "section8",
+          "when": "view == magnus-servers && viewItem =~ /^sqlRoot/"
+        },
+        {
+          "command": "magnus.sql.showHistory",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /^server_/"
+        },
+        {
+          "command": "magnus.sql.showHistory",
+          "group": "section2",
+          "when": "view == magnus-servers && viewItem =~ /^sqlRoot/"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "magnus.sql.runQuery",
+          "group": "navigation@1",
+          "when": "resourceLangId == sql"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "magnus.sql.runQuery",
+          "group": "magnus-sql@1",
+          "when": "resourceLangId == sql"
+        },
+        {
+          "command": "magnus.sql.runStatement",
+          "group": "magnus-sql@2",
+          "when": "resourceLangId == sql"
+        },
+        {
+          "command": "magnus.sql.rebindDocument",
+          "group": "magnus-sql@3",
+          "when": "resourceLangId == sql"
         }
       ],
       "scm/title": [
@@ -534,9 +702,73 @@
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "magnus.sql.runQuery",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorLangId == sql && editorTextFocus"
+      },
+      {
+        "command": "magnus.sql.runStatement",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorLangId == sql && editorTextFocus"
+      },
+      {
+        "command": "magnus.sql.scratchQuery",
+        "key": "ctrl+k ctrl+g",
+        "mac": "cmd+k cmd+g"
+      },
+      {
+        "command": "magnus.sql.rebindDocument",
+        "key": "ctrl+k ctrl+b",
+        "mac": "cmd+k cmd+b",
+        "when": "editorLangId == sql && editorTextFocus"
+      },
+      {
+        "command": "magnus.sql.showHistory",
+        "key": "ctrl+k ctrl+h",
+        "mac": "cmd+k cmd+h"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "sql",
+        "path": "./snippets/rock-sql.json"
+      }
+    ],
     "configuration": {
       "title": "Magnus",
       "properties": {
+        "magnus.sql.codeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a Run lens above each statement in a SQL editor."
+        },
+        "magnus.sql.maxRenderRows": {
+          "type": "number",
+          "default": 10000,
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "The number of result rows the grid renders up front. Rows past it are loaded as the grid scrolls, and copies and exports always include every row. Values of 0 or less fall back to 10000, and anything above 100000 is clamped to it."
+        },
+        "magnus.sql.sanitizeSpreadsheetCells": {
+          "type": "boolean",
+          "default": true,
+          "description": "Neutralize cell values that a spreadsheet would read as a formula when copying as CSV or tab delimited text, or exporting to CSV. A value starting with =, +, -, @, a tab or a carriage return is prefixed with a single quote so that a value stored in Rock cannot become a live formula in Excel. Turn this off only if you need the exact stored text and you trust every value in the result set."
+        },
+        "magnus.sql.historySize": {
+          "type": "number",
+          "default": 500,
+          "minimum": 0,
+          "description": "The number of statements the query history keeps, newest first. Only the statement text is stored, never any results. Set to 0 to turn the history off and discard what is already there."
+        },
+        "magnus.sql.diagnostics": {
+          "type": "boolean",
+          "default": false,
+          "description": "Warn when Person.Id is joined directly to a PersonAliasId column. Off by default: turn it on to opt in to Rock specific warnings in SQL editors."
+        },
         "magnusLocal.pollIntervalSeconds": {
           "type": "number",
           "default": 60,
@@ -651,6 +883,7 @@
   },
   "dependencies": {
     "axios": "0.27.2",
+    "exceljs": "4.4.0",
     "form-data": "^4.0.0"
   }
 }

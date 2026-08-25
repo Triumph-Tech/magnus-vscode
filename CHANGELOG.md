@@ -2,11 +2,42 @@
 
 All notable changes to the **Magnus** VS Code extension are documented in this file. Format loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [1.2.0-beta.1] — Unreleased
+## [1.2.0] - 2026-08-25
 
-> ⚠️ **Experimental beta, and a breaking change to pulled workspaces.**
-> Requires `tech.triumph.Magnus` plugin **2.4.0**, which is not yet packaged.
-> Most of this release does nothing useful against an older plugin.
+This release combines two large additions: Local mode for pulled
+workspaces and the SQL tools that previously lived in our retired Azure
+Data Studio extension. Local mode requires the `tech.triumph.Magnus`
+plugin **2.4.0**; the SQL tools require plugin **2.0** or later. Cloud
+mode editing works unchanged on older plugins.
+
+### Added: SQL Tools
+
+- Browse a server's databases, tables and columns from a SQL node in
+  the server tree, and jump to any table with Go to Table.
+- Run the whole file, a selection, or the statement under the cursor
+  against a server, with live messages, clickable error lines, and
+  cancellation. Documents in a pulled workspace bind to their server
+  automatically; a scratch query is two keystrokes away. Servers are
+  treated as production by default, and destructive statements prompt
+  before running; tag a server staging or development to relax the
+  guard.
+- Result grids stay smooth at 100k rows, with range selection, cell
+  and row inspectors, Copy as tab delimited, Markdown, CSV, JSON or
+  INSERT, and export to CSV, JSON or Excel. Values a spreadsheet would
+  read as formulas are neutralized on CSV and clipboard paths
+  (magnus.sql.sanitizeSpreadsheetCells, on by default).
+- IntelliSense with live table and column completion from the
+  connected server, one-keystroke Rock join insertion, hover
+  documentation with actual columns, eleven rock- snippets, and a
+  searchable per-server query history (Ctrl+K Ctrl+H).
+- Keybindings: Run Query Ctrl+Shift+E, Run Statement Ctrl+Enter,
+  Scratch Query Ctrl+K Ctrl+G, Change Query Server Ctrl+K Ctrl+B,
+  Query History Ctrl+K Ctrl+H (Cmd on Mac).
+
+The SQL tools shipped to private testers as 1.2.0-sql.1 and, after a
+full security, performance and architecture review with a fix round,
+as 1.2.0-sql.2. The remaining sections below describe the Local mode
+work, previously the 1.2.0-beta series.
 
 ### Breaking
 

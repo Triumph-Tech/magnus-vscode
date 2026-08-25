@@ -1,0 +1,214 @@
+{
+    "Rock: person search by name": {
+        "prefix": "rock-person-name",
+        "description": "Find people by name, newest Rock conventions: living people only, matching nick name, first name or last name.",
+        "body": [
+            "SELECT TOP (100)",
+            "    p.Id,",
+            "    p.NickName,",
+            "    p.LastName,",
+            "    p.Email",
+            "FROM Person p",
+            "WHERE p.IsDeceased = 0",
+            "    AND (",
+            "        p.LastName LIKE '${1:smith}%'",
+            "        OR p.NickName LIKE '${1:smith}%'",
+            "        OR p.FirstName LIKE '${1:smith}%'",
+            "    )",
+            "ORDER BY p.LastName, p.NickName;"
+        ]
+    },
+    "Rock: person search by email or phone": {
+        "prefix": "rock-person-email",
+        "description": "Find people by email address, with their phone numbers. PhoneNumber.PersonId is a real PersonId, one of the few in Rock that is not an alias id.",
+        "body": [
+            "SELECT",
+            "    p.Id,",
+            "    p.NickName,",
+            "    p.LastName,",
+            "    p.Email,",
+            "    pn.NumberFormatted,",
+            "    dv.Value AS PhoneType",
+            "FROM Person p",
+            "LEFT JOIN PhoneNumber pn ON pn.PersonId = p.Id",
+            "LEFT JOIN DefinedValue dv ON dv.Id = pn.NumberTypeValueId",
+            "WHERE p.Email LIKE '%${1:@example.org}%'",
+            "ORDER BY p.LastName, p.NickName;"
+        ]
+    },
+    "Rock: attendance in a date range": {
+        "prefix": "rock-attendance-range",
+        "description": "Who attended which group between two dates. Attendance carries almost nothing itself: the group, date and schedule all come from AttendanceOccurrence.",
+        "body": [
+            "SELECT",
+            "    p.Id AS PersonId,",
+            "    p.NickName,",
+            "    p.LastName,",
+            "    g.Name AS GroupName,",
+            "    ao.OccurrenceDate,",
+            "    a.StartDateTime",
+            "FROM Attendance a",
+            "INNER JOIN AttendanceOccurrence ao ON ao.Id = a.OccurrenceId",
+            "INNER JOIN [Group] g ON g.Id = ao.GroupId",
+            "INNER JOIN PersonAlias pa ON pa.Id = a.PersonAliasId",
+            "INNER JOIN Person p ON p.Id = pa.PersonId",
+            "WHERE ao.OccurrenceDate >= '${1:2026-01-01}'",
+            "    AND ao.OccurrenceDate < '${2:2026-02-01}'",
+            "    AND a.DidAttend = 1",
+            "ORDER BY ao.OccurrenceDate, p.LastName;"
+        ]
+    },
+    "Rock: giving by person and date range": {
+        "prefix": "rock-giving-range",
+        "description": "Gifts in a date range with the giver and the fund. Amounts live on FinancialTransactionDetail because one gift can be split across accounts.",
+        "body": [
+            "SELECT",
+            "    p.Id AS PersonId,",
+            "    p.NickName,",
+            "    p.LastName,",
+            "    fa.PublicName AS Account,",
+            "    ft.TransactionDateTime,",
+            "    ftd.Amount",
+            "FROM FinancialTransaction ft",
+            "INNER JOIN FinancialTransactionDetail ftd ON ftd.TransactionId = ft.Id",
+            "INNER JOIN FinancialAccount fa ON fa.Id = ftd.AccountId",
+            "INNER JOIN PersonAlias pa ON pa.Id = ft.AuthorizedPersonAliasId",
+            "INNER JOIN Person p ON p.Id = pa.PersonId",
+            "WHERE ft.TransactionDateTime >= '${1:2026-01-01}'",
+            "    AND ft.TransactionDateTime < '${2:2027-01-01}'",
+            "ORDER BY ft.TransactionDateTime DESC;"
+        ]
+    },
+    "Rock: total giving per person": {
+        "prefix": "rock-giving-totals",
+        "description": "Total given per person in a date range, summed over the detail rows and grouped by the giver.",
+        "body": [
+            "SELECT",
+            "    p.Id AS PersonId,",
+            "    p.NickName,",
+            "    p.LastName,",
+            "    COUNT(DISTINCT ft.Id) AS GiftCount,",
+            "    SUM(ftd.Amount) AS TotalAmount",
+            "FROM FinancialTransaction ft",
+            "INNER JOIN FinancialTransactionDetail ftd ON ftd.TransactionId = ft.Id",
+            "INNER JOIN PersonAlias pa ON pa.Id = ft.AuthorizedPersonAliasId",
+            "INNER JOIN Person p ON p.Id = pa.PersonId",
+            "WHERE ft.TransactionDateTime >= '${1:2026-01-01}'",
+            "    AND ft.TransactionDateTime < '${2:2027-01-01}'",
+            "GROUP BY p.Id, p.NickName, p.LastName",
+            "ORDER BY TotalAmount DESC;"
+        ]
+    },
+    "Rock: group members with roles": {
+        "prefix": "rock-group-members",
+        "description": "The members of one group with their role and status. GroupMember.PersonId is a real PersonId. Remember that families are groups too.",
+        "body": [
+            "SELECT",
+            "    g.Name AS GroupName,",
+            "    gtr.Name AS RoleName,",
+            "    p.NickName,",
+            "    p.LastName,",
+            "    gm.GroupMemberStatus",
+            "FROM GroupMember gm",
+            "INNER JOIN [Group] g ON g.Id = gm.GroupId",
+            "INNER JOIN GroupTypeRole gtr ON gtr.Id = gm.GroupRoleId",
+            "INNER JOIN Person p ON p.Id = gm.PersonId",
+            "WHERE g.Id = ${1:1}",
+            "    AND gm.IsArchived = 0",
+            "ORDER BY gtr.[Order], p.LastName, p.NickName;"
+        ]
+    },
+    "Rock: defined value lookup": {
+        "prefix": "rock-defined-values",
+        "description": "The entries of one defined type, in their configured order. Every column ending in ValueId points at DefinedValue.",
+        "body": [
+            "SELECT",
+            "    dv.Id,",
+            "    dv.Value,",
+            "    dv.Description,",
+            "    dt.Name AS DefinedType",
+            "FROM DefinedValue dv",
+            "INNER JOIN DefinedType dt ON dt.Id = dv.DefinedTypeId",
+            "WHERE dt.Name = '${1:Connection Status}'",
+            "ORDER BY dv.[Order];"
+        ]
+    },
+    "Rock: attribute values for an entity type": {
+        "prefix": "rock-attribute-values",
+        "description": "The values of one custom field. AttributeValue.EntityId is polymorphic, so always filter through Attribute.EntityTypeId before joining anything to it.",
+        "body": [
+            "SELECT",
+            "    a.[Key],",
+            "    a.Name AS AttributeName,",
+            "    av.EntityId,",
+            "    av.Value",
+            "FROM AttributeValue av",
+            "INNER JOIN Attribute a ON a.Id = av.AttributeId",
+            "INNER JOIN EntityType et ON et.Id = a.EntityTypeId",
+            "WHERE et.Name = '${1:Rock.Model.Person}'",
+            "    AND a.[Key] = '${2:Allergy}'",
+            "    AND av.Value <> ''",
+            "ORDER BY av.EntityId;"
+        ]
+    },
+    "Rock: recent registrations": {
+        "prefix": "rock-registrations",
+        "description": "Registrations submitted in the last few days, with the registrar and the instance they belong to.",
+        "body": [
+            "SELECT",
+            "    ri.Name AS RegistrationInstance,",
+            "    r.Id AS RegistrationId,",
+            "    p.NickName,",
+            "    p.LastName,",
+            "    r.CreatedDateTime",
+            "FROM Registration r",
+            "INNER JOIN RegistrationInstance ri ON ri.Id = r.RegistrationInstanceId",
+            "INNER JOIN PersonAlias pa ON pa.Id = r.PersonAliasId",
+            "INNER JOIN Person p ON p.Id = pa.PersonId",
+            "WHERE r.CreatedDateTime >= DATEADD(DAY, -${1:30}, GETDATE())",
+            "ORDER BY r.CreatedDateTime DESC;"
+        ]
+    },
+    "Rock: communication recipient status": {
+        "prefix": "rock-communication-recipients",
+        "description": "Per-recipient state of one communication: sent, opened, failed and why.",
+        "body": [
+            "SELECT",
+            "    c.Subject,",
+            "    cr.Status,",
+            "    cr.StatusNote,",
+            "    p.NickName,",
+            "    p.LastName,",
+            "    cr.SendDateTime,",
+            "    cr.OpenedDateTime",
+            "FROM CommunicationRecipient cr",
+            "INNER JOIN Communication c ON c.Id = cr.CommunicationId",
+            "INNER JOIN PersonAlias pa ON pa.Id = cr.PersonAliasId",
+            "INNER JOIN Person p ON p.Id = pa.PersonId",
+            "WHERE c.Id = ${1:1}",
+            "ORDER BY cr.Status, p.LastName;"
+        ]
+    },
+    "Rock: active connection requests": {
+        "prefix": "rock-connection-requests",
+        "description": "Open connection requests with the requester and the assigned connector. Both person references go through PersonAlias.",
+        "body": [
+            "SELECT",
+            "    co.Name AS Opportunity,",
+            "    p.NickName,",
+            "    p.LastName,",
+            "    cr.ConnectionState,",
+            "    cr.CreatedDateTime,",
+            "    connector.NickName AS ConnectorNickName,",
+            "    connector.LastName AS ConnectorLastName",
+            "FROM ConnectionRequest cr",
+            "INNER JOIN ConnectionOpportunity co ON co.Id = cr.ConnectionOpportunityId",
+            "INNER JOIN PersonAlias pa ON pa.Id = cr.PersonAliasId",
+            "INNER JOIN Person p ON p.Id = pa.PersonId",
+            "LEFT JOIN PersonAlias cpa ON cpa.Id = cr.ConnectorPersonAliasId",
+            "LEFT JOIN Person connector ON connector.Id = cpa.PersonId",
+            "WHERE cr.ConnectionState IN (0, 3)",
+            "ORDER BY cr.CreatedDateTime DESC;"
+        ]
+    }
+}

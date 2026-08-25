@@ -5,6 +5,7 @@ import { Events } from "./events";
 import { IconCache } from "./iconCache";
 import { isAISkillsCollectionNodeUri, isLocalModePullableUri, isMobileAppNodeUri, isThemeNodeUri } from "./pullHelpers";
 import { PullRegistry } from "./pullRegistry";
+import { SqlObjectExplorer } from "./sql/sqlObjectExplorer";
 
 /** The custom scheme used in building URIs for Visual Studio Code. */
 const customUriSchemeInsecure = "ttmagnus";
@@ -20,18 +21,24 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
     private didChangeTreeData: vscode.EventEmitter<ITreeNode | undefined> = new vscode.EventEmitter<ITreeNode | undefined>();
     private treeNodeTable: Record<string, ITreeNode> = {};
     private parentItemLookup: Record<string, ITreeNode> = {};
+    private sqlObjectExplorer: SqlObjectExplorer;
 
     // #region Constructors
 
-    public constructor(context: vscode.ExtensionContext, events: Events, api: Api, pullRegistry: PullRegistry) {
+    public constructor(context: vscode.ExtensionContext, events: Events, api: Api, pullRegistry: PullRegistry, sqlObjectExplorer: SqlObjectExplorer) {
         this.context = context;
         this.events = events;
         this.api = api;
         this.pullRegistry = pullRegistry;
+        this.sqlObjectExplorer = sqlObjectExplorer;
 
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(customUriSchemeInsecure, this));
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(customUriSchemeSecure, this));
-        context.subscriptions.push(vscode.window.registerTreeDataProvider("magnus-servers", this));
+
+        const treeView = vscode.window.createTreeView<ITreeNode | undefined>("magnus-servers", { treeDataProvider: this });
+        context.subscriptions.push(treeView);
+        this.sqlObjectExplorer.attachTreeView(treeView);
+        this.sqlObjectExplorer.onDidChangeNode(node => this.didChangeTreeData.fire(node));
 
         this.events.onServerAdded(this.onKnownServersChanged.bind(this));
         this.events.onServerRemoved(this.onKnownServersChanged.bind(this));
@@ -124,6 +131,9 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
             contextValue: this.getContextValue(element)
         };
 
+        // Let the SQL subtree adjust its own nodes.
+        this.sqlObjectExplorer.decorateTreeItem(element, node);
+
         const hasOpenCommand = element.itemDescriptor.disableOpenFile !== true
             && !element.itemDescriptor.isFolder
             && (element.itemDescriptor.uri || element.isServer);
@@ -162,7 +172,15 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         if (!element) {
             return this.getServerNodes();
         }
-        else if (!element.itemDescriptor.uri && !element.isServer) {
+
+        // The SQL subtree loads its own children.
+        const sqlChildren = await this.sqlObjectExplorer.getChildren(element);
+
+        if (sqlChildren) {
+            return sqlChildren;
+        }
+
+        if (!element.itemDescriptor.uri && !element.isServer) {
             return [];
         }
         else {
@@ -179,7 +197,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                 ? undefined
                 : (element.parentGroupName ?? element.itemDescriptor.displayName);
 
-            const items = childItemDescriptors.map(item => {
+            const items: ITreeNode[] = childItemDescriptors.map(item => {
                 return {
                     serverUrl: element.serverUrl,
                     resource: this.getResourceFromWebUrl(element.serverUrl, item.uri),
@@ -193,8 +211,18 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                 this.parentItemLookup[item.resource.toString()] = element;
             }
 
+            if (element.isServer) {
+                items.push(this.sqlObjectExplorer.getSqlRootNode(element));
+            }
+
             return items;
         }
+    }
+
+    /** @inheritdoc */
+    public getParent(element: ITreeNode): ITreeNode | undefined {
+        return this.sqlObjectExplorer.getParent(element)
+            ?? this.parentItemLookup[element.resource.toString()];
     }
 
     // #endregion

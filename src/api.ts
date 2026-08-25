@@ -679,7 +679,6 @@ export class Api {
                 return axios.request<ActionResponse>(requestConfig);
             }
         );
-        console.log(result);
 
         if (result.status === 404) {
             throw new Error("Requested resource was not found.");

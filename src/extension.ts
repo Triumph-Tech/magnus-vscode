@@ -14,6 +14,18 @@ import { registerPulledWorkspaceCommands } from "./pulledWorkspaceCommands";
 import { registerReauthenticateCommand } from "./reauthenticateCommand";
 import { registerRepairExtensionsCommand } from "./repairExtensions";
 import { registerWalkthroughCommands } from "./walkthroughCommands";
+import { BindingManager } from "./sql/bindingManager";
+import { ResultsPanelManager } from "./sql/resultsPanel";
+import { SqlApi } from "./sql/sqlApi";
+import { SqlCodeLensProvider } from "./sql/sqlCodeLensProvider";
+import { SqlCommands } from "./sql/sqlCommands";
+import { QueryHistoryStore } from "./sql/queryHistoryStore";
+import { SqlCompletionProvider } from "./sql/sqlCompletionProvider";
+import { SqlDiagnostics } from "./sql/sqlDiagnostics";
+import { SqlHoverProvider } from "./sql/sqlHoverProvider";
+import { SqlObjectExplorer } from "./sql/sqlObjectExplorer";
+import { SqlRunCommands } from "./sql/sqlRunCommands";
+import { TableCacheWarmer } from "./sql/tableCacheWarmer";
 
 export function activate(context: vscode.ExtensionContext): void {
     // --- Cloud-mode wiring (unchanged from upstream Magnus 1.0.2) -------
@@ -28,8 +40,15 @@ export function activate(context: vscode.ExtensionContext): void {
     // whether the app is already pulled.
     const pullRegistry = new PullRegistry(context);
 
+    // --- SQL tools wiring. See docs/sql-tools-spec.md. -------------------
+    const sqlApi = new SqlApi(api);
+    const sqlObjectExplorer = new SqlObjectExplorer(sqlApi);
+    const sqlBindings = new BindingManager(context);
+    const sqlResultsPanels = new ResultsPanelManager(context);
+    const sqlHistory = new QueryHistoryStore(context);
+
     context.subscriptions.push(events);
-    context.subscriptions.push(new MagnusTreeDataProvider(context, events, api, pullRegistry));
+    context.subscriptions.push(new MagnusTreeDataProvider(context, events, api, pullRegistry, sqlObjectExplorer));
     context.subscriptions.push(new Commands(context, events, secrets, api));
     context.subscriptions.push(new AboutWebviewProvider(context));
 
@@ -72,6 +91,17 @@ export function activate(context: vscode.ExtensionContext): void {
     for (const d of registerWalkthroughCommands()) {
         context.subscriptions.push(d);
     }
+
+    context.subscriptions.push(sqlObjectExplorer);
+    context.subscriptions.push(new SqlCommands(sqlObjectExplorer, sqlBindings));
+    context.subscriptions.push(sqlBindings);
+    context.subscriptions.push(sqlResultsPanels);
+    context.subscriptions.push(new SqlRunCommands(sqlApi, sqlBindings, sqlResultsPanels, sqlObjectExplorer, sqlHistory));
+    context.subscriptions.push(new SqlCodeLensProvider());
+    context.subscriptions.push(new SqlCompletionProvider(sqlBindings, sqlObjectExplorer));
+    context.subscriptions.push(new SqlHoverProvider(sqlBindings, sqlObjectExplorer));
+    context.subscriptions.push(new SqlDiagnostics());
+    context.subscriptions.push(new TableCacheWarmer(sqlBindings, sqlObjectExplorer));
 }
 
 export function deactivate(): void {

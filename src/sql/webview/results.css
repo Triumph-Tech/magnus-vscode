@@ -1,0 +1,561 @@
+/*
+ * The styles of the query results panel.
+ *
+ * Everything is expressed in VS Code theme variables so the panel matches
+ * whatever theme the person is using, light, dark or high contrast.
+ */
+
+body {
+    margin: 0;
+    padding: 0;
+    color: var(--vscode-foreground);
+    background-color: var(--vscode-editor-background);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--vscode-panel-border, transparent);
+    flex: 0 0 auto;
+}
+
+.header-left,
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.server-label {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.statement-preview {
+    color: var(--vscode-descriptionForeground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status {
+    color: var(--vscode-descriptionForeground);
+    white-space: nowrap;
+}
+
+.status.is-error {
+    color: var(--vscode-errorForeground);
+}
+
+.cancel-button {
+    color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
+    background-color: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
+    border: none;
+    border-radius: 2px;
+    padding: 2px 10px;
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.cancel-button:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
+}
+
+.cancel-button:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+}
+
+.tab-strip {
+    display: flex;
+    gap: 2px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--vscode-panel-border, transparent);
+    flex: 0 0 auto;
+}
+
+.tab {
+    color: var(--vscode-panelTitle-inactiveForeground, var(--vscode-descriptionForeground));
+    background: none;
+    border: none;
+    border-bottom: 1px solid transparent;
+    padding: 6px 8px;
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.tab.active {
+    color: var(--vscode-panelTitle-activeForeground, var(--vscode-foreground));
+    border-bottom-color: var(--vscode-panelTitle-activeBorder, var(--vscode-focusBorder));
+}
+
+.tab-panel {
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 8px 12px;
+}
+
+.message-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-family: var(--vscode-editor-font-family);
+    font-size: var(--vscode-editor-font-size);
+    white-space: pre-wrap;
+}
+
+.message-list li {
+    padding: 1px 0;
+}
+
+.message-list li.is-error {
+    color: var(--vscode-errorForeground);
+}
+
+.message-list li.is-empty {
+    color: var(--vscode-descriptionForeground);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    font-style: italic;
+}
+
+.message-link {
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.message-link:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+}
+
+/*
+ * The results grid.
+ *
+ * Every measurement the grid depends on is set from JavaScript through the CSSOM
+ * (element.style.width and friends), never through a style attribute or a style
+ * block, so the panel's strict content security policy needs no exception for
+ * inline styles. What lives here is everything that does not depend on the data:
+ * the layout, the theme colors, and the row height's visual half.
+ */
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--vscode-panel-border, transparent);
+    flex: 0 0 auto;
+}
+
+/*
+ * An author rule that sets display beats the user agent's [hidden] rule, so
+ * every flex container that is toggled with the hidden property has to say so.
+ */
+.toolbar[hidden],
+.results-host[hidden] {
+    display: none;
+}
+
+.toolbar-spacer {
+    flex: 1 1 auto;
+}
+
+.toolbar-button {
+    color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+    background-color: var(--vscode-button-secondaryBackground, transparent);
+    border: 1px solid var(--vscode-panel-border, transparent);
+    border-radius: 2px;
+    padding: 2px 8px;
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.toolbar-button:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
+}
+
+.toolbar-button:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+}
+
+.toolbar-button[aria-pressed="true"] {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+}
+
+.selection-summary {
+    color: var(--vscode-descriptionForeground);
+    white-space: nowrap;
+}
+
+.menu-host {
+    position: relative;
+}
+
+.menu,
+.context-menu {
+    position: absolute;
+    z-index: 20;
+    min-width: 180px;
+    padding: 4px 0;
+    color: var(--vscode-menu-foreground, var(--vscode-foreground));
+    background-color: var(--vscode-menu-background, var(--vscode-editorWidget-background));
+    border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border, transparent));
+    box-shadow: 0 2px 8px var(--vscode-widget-shadow, transparent);
+}
+
+.menu {
+    top: 100%;
+    left: 0;
+}
+
+.context-menu {
+    position: fixed;
+    z-index: 30;
+}
+
+.menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 3px 12px;
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.menu-item:hover:enabled {
+    color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground));
+    background-color: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground));
+}
+
+.menu-item:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -1px;
+}
+
+.menu-item:disabled {
+    color: var(--vscode-disabledForeground);
+    cursor: default;
+}
+
+.menu-separator {
+    padding: 6px 12px 2px 12px;
+    color: var(--vscode-descriptionForeground);
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-top: 1px solid var(--vscode-menu-separatorBackground, var(--vscode-panel-border, transparent));
+    margin-top: 4px;
+}
+
+.results-host {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+}
+
+.grid-wrapper {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.grid-wrapper[hidden] {
+    display: none;
+}
+
+.grid-viewport {
+    flex: 1 1 auto;
+    overflow: auto;
+    position: relative;
+    font-family: var(--vscode-editor-font-family);
+    font-size: var(--vscode-editor-font-size);
+    outline: none;
+}
+
+.grid-viewport:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -1px;
+}
+
+.grid-head-strip {
+    flex: 0 0 auto;
+    overflow: hidden;
+    font-family: var(--vscode-editor-font-family);
+    font-size: var(--vscode-editor-font-size);
+}
+
+.grid-header {
+    display: flex;
+    background-color: var(--vscode-keybindingTable-headerBackground, var(--vscode-editorWidget-background));
+    border-bottom: 1px solid var(--vscode-panel-border, transparent);
+}
+
+.grid-corner,
+.grid-head-cell {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    height: 22px;
+    line-height: 22px;
+    padding: 0 8px;
+    border-right: 1px solid var(--vscode-panel-border, transparent);
+    white-space: nowrap;
+    overflow: hidden;
+    font-weight: 600;
+    position: relative;
+}
+
+.grid-corner {
+    position: sticky;
+    left: 0;
+    z-index: 6;
+    background-color: var(--vscode-keybindingTable-headerBackground, var(--vscode-editorWidget-background));
+    cursor: pointer;
+}
+
+.head-label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.col-resizer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+}
+
+.col-resizer:hover {
+    background-color: var(--vscode-focusBorder);
+}
+
+body.is-resizing {
+    cursor: col-resize;
+    user-select: none;
+}
+
+.grid-canvas {
+    position: relative;
+}
+
+.grid-row {
+    position: absolute;
+    left: 0;
+    display: flex;
+}
+
+.grid-row:hover {
+    background-color: var(--vscode-list-hoverBackground);
+}
+
+.grid-gutter,
+.grid-cell {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    height: 22px;
+    line-height: 22px;
+    padding: 0 8px;
+    border-right: 1px solid var(--vscode-panel-border, transparent);
+    border-bottom: 1px solid var(--vscode-panel-border, transparent);
+    white-space: pre;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.grid-gutter {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    text-align: right;
+    color: var(--vscode-editorLineNumber-foreground);
+    background-color: var(--vscode-editor-background);
+    cursor: pointer;
+    user-select: none;
+}
+
+.grid-row.is-selected-row .grid-gutter {
+    color: var(--vscode-editorLineNumber-activeForeground, var(--vscode-foreground));
+}
+
+.grid-cell.is-selected {
+    background-color: var(--vscode-editor-selectionBackground);
+    color: var(--vscode-editor-selectionForeground, inherit);
+}
+
+.grid-cell.is-active {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -1px;
+}
+
+.grid-cell.is-null {
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+}
+
+.grid-cell.is-placeholder {
+    color: var(--vscode-descriptionForeground);
+}
+
+.grid-footer {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 12px;
+    padding: 3px 10px;
+    border-top: 1px solid var(--vscode-panel-border, transparent);
+    color: var(--vscode-descriptionForeground);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.footer-count {
+    font-weight: 600;
+}
+
+.footer-notice {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.inspector {
+    flex: 0 0 auto;
+    max-height: 40vh;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--vscode-panel-border, transparent);
+    background-color: var(--vscode-editorWidget-background);
+}
+
+.inspector[hidden] {
+    display: none;
+}
+
+.inspector-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--vscode-panel-border, transparent);
+}
+
+.inspector-title {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.inspector-kind {
+    color: var(--vscode-descriptionForeground);
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 0.04em;
+}
+
+.inspector-close {
+    color: inherit;
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    line-height: 1;
+    padding: 0 4px;
+    cursor: pointer;
+}
+
+.inspector-close:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+}
+
+.inspector-body {
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 6px 10px;
+}
+
+.inspector-code,
+.inspector-text {
+    margin: 0;
+    font-family: var(--vscode-editor-font-family);
+    font-size: var(--vscode-editor-font-size);
+}
+
+.inspector-code {
+    white-space: pre;
+}
+
+.inspector-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.inspector-null {
+    margin: 0;
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+}
+
+.inspector-pending {
+    margin: 0;
+    color: var(--vscode-descriptionForeground);
+}
+
+.inspector-record {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 2px 14px;
+    margin: 0;
+    font-family: var(--vscode-editor-font-family);
+    font-size: var(--vscode-editor-font-size);
+}
+
+.inspector-record dt {
+    color: var(--vscode-descriptionForeground);
+    white-space: nowrap;
+}
+
+.inspector-record dd {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.inspector-record dd.is-null {
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+}
+
+.measure {
+    position: absolute;
+    top: -1000px;
+    left: -1000px;
+    visibility: hidden;
+    white-space: pre;
+    font-family: var(--vscode-editor-font-family);
+    font-size: var(--vscode-editor-font-size);
+}

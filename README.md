@@ -35,6 +35,46 @@ Once these two steps are complete you’ll then head over to the plugin settings
 2. Lockdown IP address and networks that are allowed to connect to the server.
 3. Determine which features (e.g. virtual filesystems) that are enabled.
 
+# SQL Tools
+
+Magnus includes the SQL tooling that previously lived in our retired Azure
+Data Studio extension, rebuilt for VS Code and expanded. All queries run
+server-side through the Magnus plugin (v2.0 or later) using your existing
+Magnus login — no direct database connection is ever made.
+
+- **Browse** — every server in the Magnus panel gets a SQL node with its
+  databases, tables, and columns. **Go to Table** fuzzy-searches every table.
+- **Query** — right-click a server for a New Query, or press
+  `Ctrl+K Ctrl+G` (`Cmd+K Cmd+G` on Mac) anywhere for a scratch query
+  against your last-used server. Run the whole file (`Ctrl+Shift+E`), the
+  statement under the cursor (`Ctrl+Enter`), or any statement's Run code
+  lens. Files inside a pulled Magnus workspace bind to that workspace's
+  server automatically. Switch servers with `Ctrl+K Ctrl+B`.
+- **Results** — result sets open in a grid beside the editor: sort-free
+  fast scrolling at 100k+ rows, rectangular selection, a cell inspector
+  that pretty-prints JSON and XML, and a transposed row inspector. Copy
+  selections as tab-delimited, Markdown, CSV, JSON, or INSERT statements;
+  export to CSV, JSON, or Excel. A value that a spreadsheet would read as a
+  formula is neutralized on the way out, so a string stored in Rock cannot
+  become live Excel content (`magnus.sql.sanitizeSpreadsheetCells`).
+- **IntelliSense** — table completion after FROM/JOIN using the tables on
+  your actual server, column completion after an alias (or unprefixed when
+  one table is in scope), hover documentation with live column lists, and
+  ready-made JOIN clauses: type `JOIN` and accept a complete
+  `PersonAlias pa ON pa.Id = a.PersonAliasId`, including a one-keystroke
+  two-hop join through PersonAlias to Person.
+- **History** — every run is recorded per server. `Ctrl+K Ctrl+H` opens a
+  searchable history with re-run, open, and copy. Tip: start a query with a
+  `-- comment` and that comment becomes its history label.
+- **Snippets** — type `rock-` for common Rock queries (person search,
+  attendance ranges, giving totals, and more), all using correct
+  PersonAlias joins. Add your own alongside them via
+  **Preferences: Configure Snippets → sql**.
+- **Safety** — servers are treated as production by default: destructive
+  statements prompt before running and the status bar shows a red badge.
+  Tag a server as staging or development (**Magnus SQL: Set Server
+  Environment**) to relax the guard.
+
 # Additional Details
 
 For more details and documentation on this plugin please see our [Triumph Tech Magnus page](https://www.triumph.tech/magnus).
