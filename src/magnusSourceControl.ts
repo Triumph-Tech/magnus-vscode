@@ -793,7 +793,7 @@ class MagnusWorkspaceSourceControl implements vscode.Disposable {
         locallyModified: boolean
     ): vscode.SourceControlResourceState {
         const absUri = vscode.Uri.file(path.join(this.root, relPath));
-        const baselineUri = encodeBaselineUri(this.root, relPath);
+        const baselineUri = encodeBaselineUri(this.root, relPath, "diff");
         const incomingUri = vscode.Uri.file(incomingAbsPath(this.root, relPath));
 
         if (entry.isDeleted) {
@@ -859,7 +859,7 @@ class MagnusWorkspaceSourceControl implements vscode.Disposable {
         kind: "modified" | "deleted" | "unknown"
     ): vscode.SourceControlResourceState {
         const absUri = vscode.Uri.file(path.join(this.root, relPath));
-        const baselineUri = encodeBaselineUri(this.root, relPath);
+        const baselineUri = encodeBaselineUri(this.root, relPath, "diff");
         const label = kind === "deleted"
             ? "Deleted"
             : kind === "unknown"
@@ -1026,7 +1026,8 @@ class MagnusWorkspaceSourceControl implements vscode.Disposable {
         });
 
         if (outcome.kind === "applied") {
-            this.baseline.notifyChanged(encodeBaselineUri(this.root, relPath));
+            this.baseline.notifyChanged(encodeBaselineUri(this.root, relPath, "quickdiff"));
+            this.baseline.notifyChanged(encodeBaselineUri(this.root, relPath, "diff"));
             if (!opts.skipConfirm) {
                 void vscode.window.showInformationMessage(`Magnus Local: pushed ${relPath}.`);
             }
@@ -2441,7 +2442,8 @@ class MagnusWorkspaceSourceControl implements vscode.Disposable {
 
         if (outcome === "new-applied" || outcome === "conflict-applied") {
             // Both branches updated the baseline; let any open diff editors refresh.
-            this.baseline.notifyChanged(encodeBaselineUri(this.root, relPath));
+            this.baseline.notifyChanged(encodeBaselineUri(this.root, relPath, "quickdiff"));
+            this.baseline.notifyChanged(encodeBaselineUri(this.root, relPath, "diff"));
         }
 
         if (outcome !== "deletion-cancelled" && outcome !== "new-cancelled" && outcome !== "conflict-cancelled") {
