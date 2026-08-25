@@ -17,42 +17,13 @@
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
-    }
-
-    a {
-        color: inherit;
-        text-decoration: none;
-    }
-
-    a:hover,
-    a:focus,
-    a:active {
-        color: inherit;
-        outline: none;
-    }
-
-    .body-content {
-        position: absolute;
-        left: 0px;
-        top: 0px;
-        right: 0px;
-        bottom: 0px;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .links-container {
-        flex: 1 0;
+        margin: 0;
+        padding: 4px 0;
     }
 
     .link {
-        padding: 4px 32px;
+        padding: 4px 20px;
         cursor: pointer;
-    }
-
-    .link>a {
-        display: inline-block;
-        width: 100%;
     }
 
     .link:hover {
@@ -60,18 +31,18 @@
     }
 
     .logo-container {
-        flex: 0 0;
         text-align: center;
+        padding: 12px 0 4px;
     }
 
     .logo-container .logo {
         width: 100%;
-        max-width: 180px;
+        max-width: 140px;
         pointer-events: none;
     }
 
     body.vscode-light .logo-container .logo {
-        filter: brightness(30%)
+        filter: brightness(30%);
     }
 
     body.vscode-dark .logo-container .logo {
@@ -79,7 +50,7 @@
     }
 
     body.vscode-high-contrast .logo-container .logo {
-        filter: brightness(100%)
+        filter: brightness(100%);
     }
 
     body.vscode-high-contrast-light .logo-container .logo {
@@ -88,26 +59,23 @@
 </style>
 
 <body oncontextmenu="return false;">
-    <div class="body-content">
-        <div class="links-container">
-            <div class="link js-read-documentation">
-                Read documentation
-            </div>
-
-            <div class="link js-report-issue">
-                Report issue
-            </div>
-        </div>
-
-        <div class="logo-container">
-            <img src="./triumph-logo-white.svg" class="logo" />
-        </div>
+    <div class="link js-getting-started">Getting started</div>
+    <div class="link js-read-documentation">Documentation</div>
+    <div class="link js-report-issue">Report issue</div>
+    <div class="logo-container">
+        <img src="./triumph-logo-white.svg" class="logo" />
     </div>
 </body>
 
 <script lang="javascript">
     (function () {
         const vscode = acquireVsCodeApi();
+
+        document.querySelector(".js-getting-started").addEventListener("click", () => {
+            vscode.postMessage({
+                command: "getting-started"
+            });
+        });
 
         document.querySelector(".js-read-documentation").addEventListener("click", () => {
             vscode.postMessage({

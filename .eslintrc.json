@@ -68,6 +68,16 @@
     // Do not allow throwing literal strings.
     "no-throw-literal": "warn",
     // Enforce certain naming conventions on all code.
+    // `while (true)` with an internal exit is the clearest way to write a
+    // worker pulling from a shared cursor (see asyncUtils.ts). The rule still
+    // catches genuinely constant `if` conditions, which is the case worth
+    // catching.
+    "no-constant-condition": [
+      "error",
+      {
+        "checkLoops": false
+      }
+    ],
     "@typescript-eslint/naming-convention": [
       "error",
       // By default everything will use camelCase unless otherwise noted below.
@@ -91,14 +101,33 @@
         ],
         "leadingUnderscore": "allow"
       },
-      // Variables that are exported may use either camelCase or PascalCase.
+      // Module-level constants may be UPPER_CASE. The local-mode code uses this
+      // convention throughout (MANIFEST_VERSION, FETCH_CONCURRENCY,
+      // SKIP_TREE_URI_PATTERNS, …); this config predated that code and rejected
+      // all of them, so `npm run lint` reported 17 errors that were never
+      // actionable and trained everyone to ignore the error count.
+      {
+        "selector": [
+          "variable"
+        ],
+        "modifiers": [
+          "const"
+        ],
+        "format": [
+          "camelCase",
+          "PascalCase",
+          "UPPER_CASE"
+        ]
+      },
+      // Variables that are exported may use camelCase, PascalCase or UPPER_CASE.
       {
         "selector": [
           "variable"
         ],
         "format": [
           "camelCase",
-          "PascalCase"
+          "PascalCase",
+          "UPPER_CASE"
         ],
         "modifiers": [
           "exported"

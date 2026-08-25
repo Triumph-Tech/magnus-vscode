@@ -2,3 +2,5 @@
 /out
 /dist
 /*.vsix
+.DS_Store
+.claude/

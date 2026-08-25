@@ -59,11 +59,18 @@ export class AboutWebviewProvider implements vscode.Disposable, vscode.WebviewVi
 
         // Add message handlers.
         webviewView.webview.onDidReceiveMessage(message => {
-            if (message.command === "read-documentation") {
-                vscode.env.openExternal(vscode.Uri.parse("https://www.triumph.tech"));
+            if (message.command === "getting-started") {
+                vscode.commands.executeCommand(
+                    "workbench.action.openWalkthrough",
+                    "TriumphTech.magnus#magnus.gettingStarted",
+                    false
+                );
+            }
+            else if (message.command === "read-documentation") {
+                vscode.env.openExternal(vscode.Uri.parse("https://www.triumph.tech/magnus"));
             }
             else if (message.command === "report-issue") {
-                vscode.env.openExternal(vscode.Uri.parse("https://www.triumph.tech"));
+                vscode.env.openExternal(vscode.Uri.parse("https://github.com/Triumph-Tech/magnus-vscode"));
             }
         });
 

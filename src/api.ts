@@ -1,4 +1,4 @@
-import { Axios, AxiosRequestConfig, Method } from "axios";
+import { Axios, AxiosRequestConfig, AxiosResponse, Method } from "axios";
 import * as FormData from "form-data";
 import { Uri } from "vscode";
 import { promises } from "fs";
@@ -6,6 +6,9 @@ import { join as pathJoin } from "path";
 import { LightFileStat } from "./lightFileStat";
 import { basename } from "path";
 import { Secrets } from "./secrets";
+import { MagnusHttpError } from "./httpErrors";
+import { normalizeFlatTreeResponse } from "./flatTree";
+import { IStampObservation } from "./pollDecisions";
 
 const authenticationCookies: Record<string, string> = {};
 
@@ -13,7 +16,17 @@ const axios = new Axios({
     headers: {
         "Content-Type": "application/json"
     },
-    timeout: 10000,
+    // Global per-request timeout. Upstream Magnus used 10s, but a fork-local
+    // fetch can fire hundreds of requests back-to-back against a Rock server
+    // that sometimes takes >10s on cold paths — any single slow call would
+    // kill the whole fetch. 60s is generous enough to tolerate cold starts
+    // without sitting forever on a genuinely hung connection.
+    timeout: 60000,
+    // Accept every status code so the per-method branches (401/403/404/…)
+    // actually run. Without this, axios throws on any non-2xx and the status
+    // checks below become dead code — user-facing errors degrade to generic
+    // "Request failed with status code 401" messages.
+    validateStatus: () => true,
     transformResponse: (data: unknown): unknown => {
         if (typeof data === "string" && data !== "") {
             try {
@@ -27,6 +40,22 @@ const axios = new Axios({
         return data;
     }
 });
+
+/**
+ * Thrown when the server rejects a request due to authentication failure
+ * (missing/expired cookie, or credentials the server refuses). Lets callers
+ * distinguish "session died" from "network error" / "server returned 500"
+ * so they can offer re-authentication instead of a generic "try again".
+ */
+export class AuthenticationError extends Error {
+    public readonly serverUrl: string;
+
+    public constructor(serverUrl: string, message: string) {
+        super(message);
+        this.name = "AuthenticationError";
+        this.serverUrl = serverUrl;
+    }
+}
 
 /**
  * A special reviver method for JSON.parse that forces any object keys to be
@@ -163,6 +192,60 @@ export class Api {
         return `${uri.scheme}://${uri.authority}`;
     }
 
+    /**
+     * Runs an authenticated request against the server, transparently
+     * recovering from a single expired-cookie scenario by forcing a fresh
+     * login and retrying once. Any repeat 401 — or a failed re-login —
+     * surfaces as an `AuthenticationError` that callers can treat as a
+     * "please re-authenticate" signal.
+     *
+     * @param serverBaseUrl The base URL (scheme + authority) of the server.
+     * @param makeRequest Callback that performs the actual HTTP call given a cookie value.
+     *
+     * @returns The axios response. Callers should still inspect non-2xx statuses
+     * for application-level errors (404, 403-forbidden, 5xx, etc.).
+     */
+    private async authenticatedRequest<T>(
+        serverBaseUrl: string,
+        makeRequest: (cookie: string) => Promise<AxiosResponse<T>>
+    ): Promise<AxiosResponse<T>> {
+        let cookie = await this.getAuthorizationCookie(serverBaseUrl);
+        if (cookie === null) {
+            throw new AuthenticationError(
+                serverBaseUrl,
+                "Unable to authorize with the server. Re-authenticate to restore the session."
+            );
+        }
+
+        let response = await makeRequest(cookie);
+        if (response.status !== 401) {
+            return response;
+        }
+
+        // Session expired. Clear the cached cookie, force a fresh login,
+        // and retry once. Rock's /api/Auth/Login returns 401 on bad creds,
+        // not a different status, so a second 401 after re-login means the
+        // stored credentials are no longer valid.
+        delete authenticationCookies[serverBaseUrl];
+        const reloggedIn = await this.login(serverBaseUrl);
+        if (!reloggedIn) {
+            throw new AuthenticationError(
+                serverBaseUrl,
+                "Session expired and re-authentication failed. Update this server's credentials and try again."
+            );
+        }
+        cookie = authenticationCookies[serverBaseUrl];
+        response = await makeRequest(cookie);
+        if (response.status === 401) {
+            delete authenticationCookies[serverBaseUrl];
+            throw new AuthenticationError(
+                serverBaseUrl,
+                "Server rejected credentials after re-authentication. Update this server's credentials and try again."
+            );
+        }
+        return response;
+    }
+
     // #endregion
 
     // #region Public Functions
@@ -207,43 +290,6 @@ export class Api {
     }
 
     /**
-     * Gets the server item descriptor of the server.
-     *
-     * @param baseServerUrl The base server URL that uniquely identifies the server.
-     *
-     * @returns An object that describes the server node.
-     */
-    public async getServerDescriptor(baseServerUrl: string): Promise<IItemDescriptor> {
-        const url = this.getApiUrl(baseServerUrl, "api/TriumphTech/Magnus/GetServer");
-        const cookie = await this.getAuthorizationCookie(baseServerUrl);
-
-        if (cookie === null) {
-            throw new Error("Unable to authorize with the server.");
-        }
-
-        const result = await axios.get<IItemDescriptor>(url, {
-            headers: {
-                "Cookie": cookie
-            }
-        });
-
-        if (result.status === 403) {
-            throw new Error("Server has denied you access to this resource.");
-        }
-        else if (result.status === 404) {
-            throw new Error("Requested resource was not found.");
-        }
-        else if (result.status < 200 || result.status >= 300 || !result.data) {
-            const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
-            console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
-
-            throw new Error("Unexpected response received from server.");
-        }
-
-        return result.data;
-    }
-
-    /**
      * Gets the child item descriptors of the given path on the server.
      *
      * @param baseServerUrl The base server URL that uniquely identifies the server.
@@ -257,20 +303,18 @@ export class Api {
         }
 
         const url = this.getApiUrl(baseServerUrl, absolutePath);
-        const cookie = await this.getAuthorizationCookie(baseServerUrl);
 
-        if (cookie === null) {
-            throw new Error("Unable to authorize with the server.");
-        }
-
-        const result = await axios.get<IItemDescriptor[]>(url, {
-            headers: {
-                "Cookie": cookie
-            }
-        });
+        const result = await this.authenticatedRequest<IItemDescriptor[]>(
+            baseServerUrl,
+            cookie => axios.get<IItemDescriptor[]>(url, {
+                headers: {
+                    "Cookie": cookie
+                }
+            })
+        );
 
         if (result.status === 403) {
-            throw new Error("Server has denied you access to this resource.");
+            throw new MagnusHttpError(result.status, "Server has denied you access to this resource.", url);
         }
         else if (result.status === 404) {
             throw new Error("Requested resource was not found.");
@@ -279,10 +323,174 @@ export class Api {
             const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
             console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
 
-            throw new Error("Unexpected response received from server.");
+            throw new MagnusHttpError(result.status, "Unexpected response received from server.", url);
         }
 
         return result.data;
+    }
+
+    /**
+     * Fetches the entire subtree rooted at the given URI as a flat list, in a
+     * single round trip. Each returned item carries a `parentUri` link so the
+     * caller can assemble the hierarchy locally.
+     *
+     * Returns null when the server doesn't support the flat tree endpoint
+     * (404), or when the specific VFS handler hasn't opted in. Callers fall
+     * back to the recursive `getChildItems` walk in that case.
+     *
+     * @param baseServerUrl The base server URL that uniquely identifies the server.
+     * @param rootUri The URI of the subtree root — typically the same value
+     *   the caller would pass as the first `getChildItems` call. Must contain
+     *   `/GetTreeItems/`; the segment is rewritten to `/GetFlatTree/` to hit
+     *   the new endpoint without changing the rest of the path.
+     */
+    /**
+     * Asks a server what it is and what it can do.
+     *
+     * Returns null when the server does not answer usefully, which covers every
+     * plugin before 2.4.0 as well as an unreachable or non-Magnus host. Callers
+     * treat null as "no capability information", never as "nothing is enabled".
+     *
+     * Note this is deliberately not wired back into the servers tree, which
+     * dropped its per-server `GetServer` call because it blocked initial render
+     * for no payoff. Local mode calls it per workspace instead, which is
+     * naturally lazy and off the render path.
+     */
+    public async getServerInfo(baseServerUrl: string): Promise<IServerInfo | null> {
+        const url = this.getApiUrl(baseServerUrl, "api/TriumphTech/Magnus/GetServer");
+
+        try {
+            const result = await this.authenticatedRequest<IServerInfo>(
+                baseServerUrl,
+                cookie => axios.get<IServerInfo>(url, {
+                    headers: {
+                        "Cookie": cookie
+                    }
+                })
+            );
+
+            if (result.status < 200 || result.status >= 300) {
+                return null;
+            }
+
+            const data = result.data;
+
+            if (!data || typeof data !== "object" || Array.isArray(data)) {
+                return null;
+            }
+
+            return data;
+        }
+        catch {
+            // Capability discovery is an enhancement, never a gate. A failure
+            // here must not stop a workspace opening or a fetch running, so it
+            // degrades to "no information" rather than propagating.
+            return null;
+        }
+    }
+
+    /**
+     * Asks the server whether anything under a subtree has changed, without
+     * enumerating it. Tier 1 of the polling design.
+     *
+     * Returns null when the handler cannot answer cheaply, which it signals with
+     * a 404. Callers must stop polling that root rather than falling back to
+     * something expensive: an unsupported stamp means "do not ask again", not
+     * "go and look the slow way every minute".
+     */
+    public async getTreeStamp(
+        baseServerUrl: string,
+        rootUri: string
+    ): Promise<IStampObservation | null> {
+        if (!rootUri || !rootUri.includes("/GetTreeItems/")) {
+            return null;
+        }
+
+        const stampPath = rootUri.replace("/GetTreeItems/", "/GetTreeStamp/");
+        const url = this.getApiUrl(baseServerUrl, stampPath.replace(/^\/+/, ""));
+
+        const result = await this.authenticatedRequest<ITreeStampResult>(
+            baseServerUrl,
+            cookie => axios.get<ITreeStampResult>(url, {
+                headers: {
+                    "Cookie": cookie
+                }
+            })
+        );
+
+        // 404 = this handler (or this whole plugin version) has no cheap answer.
+        if (result.status === 404) {
+            return null;
+        }
+        if (result.status === 403) {
+            throw new MagnusHttpError(result.status, "Server has denied you access to this resource.", url);
+        }
+        if (result.status < 200 || result.status >= 300) {
+            throw new MagnusHttpError(result.status, "Unexpected response received from server.", url);
+        }
+
+        const data = result.data;
+
+        // Guard the same way the flat tree does: a 200 carrying an HTML error
+        // page or a Rock catch-all body is not an answer. `itemCount` must be a
+        // real number, because defaulting it to 0 would make every tick compare
+        // equal and silently pin the poll to "nothing ever changes".
+        if (!data || typeof data !== "object" || typeof data.itemCount !== "number") {
+            return null;
+        }
+
+        return {
+            stamp: data.stamp ?? null,
+            itemCount: data.itemCount
+        };
+    }
+
+    public async getFlatTree(
+        baseServerUrl: string,
+        rootUri: string,
+        detail?: "tree" | "hash"
+    ): Promise<IFlatTreeResult | null> {
+        if (!rootUri || !rootUri.includes("/GetTreeItems/")) {
+            // No way to derive the flat-tree path from a root URI that doesn't
+            // contain the tree segment — caller is expected to pass a real
+            // GetTreeItems-style URI (the same shape used for getChildItems).
+            return null;
+        }
+
+        const flatPath = rootUri.replace("/GetTreeItems/", "/GetFlatTree/");
+        // `detail` is omitted rather than sent as "tree", so the default stays
+        // the server's default. A plugin too old to know the parameter ignores
+        // it and returns the cheap response, which is the safe direction.
+        const query = detail === "hash" ? "?detail=hash" : "";
+        const url = `${this.getApiUrl(baseServerUrl, flatPath.replace(/^\/+/, ""))}${query}`;
+
+        const result = await this.authenticatedRequest<IFlatTreeItem[] | IFlatTreeResult>(
+            baseServerUrl,
+            cookie => axios.get<IFlatTreeItem[] | IFlatTreeResult>(url, {
+                headers: {
+                    "Cookie": cookie
+                }
+            })
+        );
+
+        // 404 = handler doesn't implement flat tree yet; signal "fall back" to
+        // the caller. Other non-2xx statuses are real errors and propagate.
+        if (result.status === 404) {
+            return null;
+        }
+        if (result.status === 403) {
+            throw new MagnusHttpError(result.status, "Server has denied you access to this resource.", url);
+        }
+        if (result.status < 200 || result.status >= 300 || !result.data) {
+            const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
+            console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
+            throw new MagnusHttpError(result.status, "Unexpected response received from server.", url);
+        }
+
+        // Shape handling lives in `normalizeFlatTreeResponse`, which is pure and
+        // covered by tests: the old bare-array shape, the 2.4.0 envelope, and
+        // "this endpoint isn't really here" all have to stay distinguishable.
+        return normalizeFlatTreeResponse(result.data);
     }
 
     /**
@@ -293,38 +501,39 @@ export class Api {
      * @returns An object that describes the file status.
      */
     public async getFileStat(url: string): Promise<LightFileStat> {
-        const cookie = await this.getAuthorizationCookie(this.getServerBaseUrl(url));
+        const result = await this.authenticatedRequest(
+            this.getServerBaseUrl(url),
+            async (cookie) => {
+                const headResult = await axios.head(url, {
+                    headers: {
+                        "Cookie": cookie
+                    }
+                });
 
-        if (cookie === null) {
-            throw new Error("Unable to authorize with the server.");
-        }
-
-        let result = await axios.head(url, {
-            headers: {
-                "Cookie": cookie
-            }
-        });
-
-        if (result.status === 405) {
-            // Server doesn't support HEAD request. Try again with a GET.
-            result = await axios.get(url, {
-                headers: {
-                    "Cookie": cookie
+                if (headResult.status === 405) {
+                    // Server doesn't support HEAD request. Try again with a GET.
+                    return axios.get(url, {
+                        headers: {
+                            "Cookie": cookie
+                        }
+                    });
                 }
-            });
-        }
+
+                return headResult;
+            }
+        );
 
         if (result.status === 404) {
             throw new Error("Requested resource was not found.");
         }
         else if (result.status === 403) {
-            throw new Error("Server has denied you access to this resource.");
+            throw new MagnusHttpError(result.status, "Server has denied you access to this resource.", url);
         }
         else if (result.status < 200 || result.status >= 300) {
             const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
             console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
 
-            throw new Error("Unexpected response received from server.");
+            throw new MagnusHttpError(result.status, "Unexpected response received from server.", url);
         }
 
         const date = result.headers["date"];
@@ -343,31 +552,27 @@ export class Api {
      * @returns An array of 8-bit unsigned integers representing the contents of the URL.
      */
     public async getFileContent(url: string): Promise<Uint8Array> {
-        const cookie = await this.getAuthorizationCookie(this.getServerBaseUrl(url));
-
-        if (cookie === null) {
-            console.log("auth failure: ", url);
-            throw new Error("Unable to authorize with the server.");
-        }
-
-        const result = await axios.get<ArrayBuffer>(url, {
-            responseType: "arraybuffer",
-            headers: {
-                "Cookie": cookie
-            }
-        });
+        const result = await this.authenticatedRequest<ArrayBuffer>(
+            this.getServerBaseUrl(url),
+            cookie => axios.get<ArrayBuffer>(url, {
+                responseType: "arraybuffer",
+                headers: {
+                    "Cookie": cookie
+                }
+            })
+        );
 
         if (result.status === 404) {
             throw new Error("Requested resource was not found.");
         }
         else if (result.status === 403) {
-            throw new Error("Server has denied you access to this resource.");
+            throw new MagnusHttpError(result.status, "Server has denied you access to this resource.", url);
         }
         else if (result.status < 200 || result.status >= 300 || !result.data) {
             const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
             console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
 
-            throw new Error("Unexpected response received from server.");
+            throw new MagnusHttpError(result.status, "Unexpected response received from server.", url);
         }
 
         return new Uint8Array(result.data);
@@ -380,31 +585,28 @@ export class Api {
      * @param content The contents of the file that should be sent to the server.
      */
     public async updateFileContent(url: string, content: Uint8Array): Promise<void> {
-        const cookie = await this.getAuthorizationCookie(this.getServerBaseUrl(url));
-
-        if (cookie === null) {
-            throw new Error("Unable to authorize with the server.");
-        }
-
-        const result = await axios.post<ArrayBuffer>(url, content, {
-            responseType: "arraybuffer",
-            headers: {
-                "Content-Type": "application/octet-stream",
-                "Cookie": cookie
-            }
-        });
+        const result = await this.authenticatedRequest<ArrayBuffer>(
+            this.getServerBaseUrl(url),
+            cookie => axios.post<ArrayBuffer>(url, content, {
+                responseType: "arraybuffer",
+                headers: {
+                    "Content-Type": "application/octet-stream",
+                    "Cookie": cookie
+                }
+            })
+        );
 
         if (result.status === 404) {
             throw new Error("Requested resource was not found.");
         }
         else if (result.status === 403) {
-            throw new Error("Server has denied you access to this resource.");
+            throw new MagnusHttpError(result.status, "Server has denied you access to this resource.", url);
         }
         else if (result.status < 200 || result.status >= 300 || !result.data) {
             const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
             console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
 
-            throw new Error("Unexpected response received from server.");
+            throw new MagnusHttpError(result.status, "Unexpected response received from server.", url);
         }
     }
 
@@ -457,40 +659,39 @@ export class Api {
      * @param url The URL to be used for the POST request.
      */
     public async actionUrl(method: Method, url: string, data?: unknown, updateRequest?: ((request: AxiosRequestConfig) => void)): Promise<ActionResponse> {
-        const cookie = await this.getAuthorizationCookie(this.getServerBaseUrl(url));
+        const result = await this.authenticatedRequest<ActionResponse>(
+            this.getServerBaseUrl(url),
+            cookie => {
+                const requestConfig: AxiosRequestConfig = {
+                    method: method,
+                    url: url,
+                    data: data,
+                    headers: {
+                        "Cookie": cookie
+                    },
+                    timeout: 30000
+                };
 
-        if (cookie === null) {
-            throw new Error("Unable to authorize with the server.");
-        }
+                if (updateRequest) {
+                    updateRequest(requestConfig);
+                }
 
-        const requestConfig: AxiosRequestConfig = {
-            method: method,
-            url: url,
-            data: data,
-            headers: {
-                "Cookie": cookie
-            },
-            timeout: 30000
-        };
-
-        if (updateRequest) {
-            updateRequest(requestConfig);
-        }
-
-        const result = await axios.request<ActionResponse>(requestConfig);
+                return axios.request<ActionResponse>(requestConfig);
+            }
+        );
         console.log(result);
 
         if (result.status === 404) {
             throw new Error("Requested resource was not found.");
         }
         else if (result.status === 403) {
-            throw new Error("Server has denied you access to this resource.");
+            throw new MagnusHttpError(result.status, "Server has denied you access to this resource.", url);
         }
         else if (result.status < 200 || result.status >= 300 || !result.data) {
             const message = typeof result.data === "object" ? JSON.stringify(result.data) : result.data;
             console.error(`Error in response to '${url}' - ${result.status}: ${message}}`);
 
-            throw new Error("Unexpected response received from server.");
+            throw new MagnusHttpError(result.status, "Unexpected response received from server.", url);
         }
 
         return result.data;

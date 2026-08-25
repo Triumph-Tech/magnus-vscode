@@ -63,6 +63,88 @@ declare global {
         copyValue?: string | null;
     };
 
+    /**
+     * One entry in a flat tree response from the server. Carries every
+     * IItemDescriptor field plus a `parentUri` link so the client can
+     * reconstruct the hierarchy without walking the tree level-by-level.
+     *
+     * `parentUri` is null/empty for items that are direct children of the
+     * subtree root (the root itself is not included in the response).
+     */
+    export type IFlatTreeItem = IItemDescriptor & {
+        /**
+         * URI of the parent folder for this item, or null for items at the
+         * subtree root. Used by the client to group siblings and assemble
+         * relative paths.
+         */
+        parentUri?: string | null;
+
+        /**
+         * Lowercase hex sha256 of the item's content, present only when the
+         * request asked for hashes and the server could read the item. Absent
+         * means "not known", never "unchanged".
+         */
+        hash?: string | null;
+
+        /**
+         * When the item's content last changed, ISO 8601 UTC, or absent if the
+         * server has no meaningful timestamp for it. Decides where to look;
+         * never the answer on its own.
+         */
+        modifiedDateTime?: string | null;
+    };
+
+    /**
+     * A flat-tree response, plus whether it is the whole subtree.
+     *
+     * `complete: false` means the server left something out: a cap, a cycle, or
+     * a branch it could not enumerate. Such a response may be used to add and
+     * update items, and must NEVER be used to compute deletions, because an
+     * omission and a deletion are indistinguishable once it arrives here.
+     */
+    /**
+     * What `GetServer` reports about a Magnus plugin, from 2.4.0 onwards.
+     */
+    export type IServerInfo = {
+        icon?: string | null;
+
+        /**
+         * Plugin assembly version, three parts. Absent means a plugin older than
+         * 2.4.0, which supports none of the capability contract.
+         */
+        pluginVersion?: string | null;
+
+        /**
+         * Enabled virtual filesystem identifiers, or null when the caller is not
+         * entitled to know. Null and empty mean different things: see
+         * `classifyRootAccess`.
+         */
+        enabledVirtualFilesystems?: string[] | null;
+    };
+
+    /**
+     * The aggregate change token for one subtree, from `GetTreeStamp`.
+     */
+    export type ITreeStampResult = {
+        /** Most recent modification time under the subtree, ISO 8601, or null. */
+        stamp?: string | null;
+
+        /** Number of items under the subtree, unfiltered by permissions. */
+        itemCount?: number | null;
+    };
+
+    export type IFlatTreeResult = {
+        items: IFlatTreeItem[];
+
+        complete: boolean;
+
+        /**
+         * Server-supplied diagnostic token (`item-cap`, `depth-cap`,
+         * `branch-error`). For display and logging only; never branch on it.
+         */
+        incompleteReason?: string | null;
+    };
+
     export type ITreeNode = {
         serverUrl: string;
 
@@ -71,6 +153,29 @@ declare global {
         itemDescriptor: IItemDescriptor;
 
         isServer: boolean;
+
+        /**
+         * Tree role hint, populated only by code paths that need it.
+         * Optional because upstream's tree provider builds nodes without
+         * a tree-level concept; local-mode logic infers role from
+         * `isServer` and `itemDescriptor.isFolder` instead.
+         */
+        kind?: "server" | "group" | "app";
+
+        /**
+         * If this item has already been pulled into a local workspace, the
+         * absolute path to that workspace. Unset for unpulled items and for
+         * server/group nodes.
+         */
+        pulledWorkspacePath?: string;
+
+        /**
+         * Display name of the parent group (e.g. "Mobile Apps", "Pages",
+         * "Content Channels"). Used on app nodes to categorize pulled
+         * workspaces on disk and in the manifest. Unset for server/group
+         * nodes.
+         */
+        parentGroupName?: string;
     };
 
     /**

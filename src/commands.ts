@@ -77,7 +77,8 @@ export class Commands implements vscode.Disposable {
 
         const username = await vscode.window.showInputBox({
             title: "Add Server (step 2 of 3)",
-            prompt: "Username"
+            prompt: "Username",
+            ignoreFocusOut: true
         });
 
         if (!username) {
@@ -87,7 +88,8 @@ export class Commands implements vscode.Disposable {
         const password = await vscode.window.showInputBox({
             title: "Add Server (step 3 of 3)",
             prompt: "Password",
-            password: true
+            password: true,
+            ignoreFocusOut: true
         });
 
         if (!password) {
@@ -263,7 +265,8 @@ export class Commands implements vscode.Disposable {
         let serverUrl = await vscode.window.showInputBox({
             title: "Add Server (step 1 of 3)",
             prompt: "Server URL",
-            placeHolder: "https://rock.rocksolidchurchdemo.com"
+            placeHolder: "https://rock.rocksolidchurchdemo.com",
+            ignoreFocusOut: true
         });
 
         if (!serverUrl) {

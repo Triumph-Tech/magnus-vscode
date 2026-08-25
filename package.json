@@ -3,7 +3,7 @@
   "displayName": "Magnus",
   "publisher": "TriumphTech",
   "description": "Triumph Tech’s Magnus Editor is a full-featured remote editor for Rock RMS.",
-  "version": "1.0.2",
+  "version": "1.2.0-beta.3",
   "license": "mit",
   "repository": {
     "type": "git",
@@ -27,7 +27,11 @@
     "onView:magnus-servers",
     "onFileSystem:ttmagnus",
     "onFileSystem:ttmagnuss",
-    "onCommand:magnus.addServer"
+    "onCommand:magnus.addServer",
+    "onCommand:magnus.openWalkthrough",
+    "onWalkthrough:magnus.gettingStarted",
+    "workspaceContains:**/magnus.json",
+    "workspaceContains:**/.magnus/manifest.json"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -60,7 +64,7 @@
       },
       {
         "command": "magnus.buildUrl",
-        "title": "Build",
+        "title": "Deploy",
         "category": "Magnus"
       },
       {
@@ -112,6 +116,101 @@
         "command": "magnus.remoteEdit",
         "title": "Edit on Web",
         "category": "Magnus"
+      },
+      {
+        "command": "magnusLocal.pullToWorkspace",
+        "title": "Pull to Local Workspace…",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnusLocal.editSelection",
+        "title": "Edit Workspace Selection…",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnusLocal.openPulledWorkspace",
+        "title": "Open Local Workspace",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnusLocal.revealPulledWorkspace",
+        "title": "Reveal Local Workspace in Finder",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnusLocal.unlinkPulledWorkspace",
+        "title": "Unlink Local Workspace",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnusLocal.pushChanges",
+        "title": "Push All Changes",
+        "category": "Magnus",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "magnusLocal.discardChange",
+        "title": "Discard Changes",
+        "category": "Magnus",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "magnusLocal.refreshChanges",
+        "title": "Refresh",
+        "category": "Magnus",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "magnusLocal.fetchFromServer",
+        "title": "Fetch from Server",
+        "category": "Magnus",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "magnusLocal.pullFromServer",
+        "title": "Pull Server Version",
+        "category": "Magnus",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "magnusLocal.reauthenticateServer",
+        "title": "Re-authenticate Server…",
+        "category": "Magnus",
+        "icon": "$(key)"
+      },
+      {
+        "command": "magnusLocal.repairFileExtensions",
+        "title": "Repair File Extensions",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnusLocal.deployApp",
+        "title": "Deploy Mobile App",
+        "category": "Magnus",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "magnusLocal.compileTheme",
+        "title": "Compile Theme",
+        "category": "Magnus",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "magnus.openWalkthrough",
+        "title": "Open Getting Started",
+        "category": "Magnus"
+      },
+      {
+        "command": "magnusLocal.hydrateWorkspace",
+        "title": "Restore Local Sync State",
+        "category": "Magnus",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "magnusLocal.connectWorkspaceServer",
+        "title": "Connect Workspace Server…",
+        "category": "Magnus",
+        "icon": "$(debug-disconnect)"
       }
     ],
     "viewsContainers": {
@@ -128,12 +227,14 @@
         {
           "id": "magnus-servers",
           "name": "Servers",
-          "type": "tree"
+          "type": "tree",
+          "initialSize": 20
         },
         {
           "id": "magnus-about",
           "name": "Help and Documentation",
-          "type": "webview"
+          "type": "webview",
+          "initialSize": 1
         }
       ]
     },
@@ -197,6 +298,59 @@
         {
           "command": "magnus.remoteEdit",
           "when": "false"
+        },
+        {
+          "command": "magnusLocal.pullToWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "magnusLocal.openPulledWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "magnusLocal.revealPulledWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "magnusLocal.unlinkPulledWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "magnusLocal.discardChange",
+          "when": "false"
+        },
+        {
+          "command": "magnusLocal.pullFromServer",
+          "when": "false"
+        },
+        {
+          "command": "magnusLocal.pushChanges",
+          "when": "scmProvider == magnusLocal"
+        },
+        {
+          "command": "magnusLocal.refreshChanges",
+          "when": "scmProvider == magnusLocal"
+        },
+        {
+          "command": "magnusLocal.deployApp",
+          "when": "scmProvider == magnusLocal && magnusLocal:canDeploy"
+        },
+        {
+          "command": "magnusLocal.compileTheme",
+          "title": "Compile Theme",
+          "when": "scmProvider == magnusLocal && magnusLocal:canCompileTheme"
+        },
+        {
+          "command": "magnusLocal.editSelection",
+          "when": "magnusLocal:hasWorkspace"
+        },
+        {
+          "command": "magnusLocal.hydrateWorkspace",
+          "when": "magnusLocal:needsHydrate || magnusLocal:hasWorkspace"
+        },
+        {
+          "command": "magnusLocal.connectWorkspaceServer",
+          "when": "magnusLocal:serverDisconnected"
         }
       ],
       "view/title": [
@@ -225,7 +379,13 @@
         {
           "command": "magnus.buildUrl",
           "group": "section2",
-          "when": "view == magnus-servers && viewItem =~ /_canBuild_/"
+          "when": "view == magnus-servers && viewItem =~ /_canBuild_/ && !(viewItem =~ /_isTheme_/)"
+        },
+        {
+          "command": "magnus.buildUrl",
+          "group": "section2",
+          "title": "Compile Theme",
+          "when": "view == magnus-servers && viewItem =~ /_canBuild_/ && viewItem =~ /_isTheme_/"
         },
         {
           "command": "magnus.newFile",
@@ -258,6 +418,26 @@
           "when": "view == magnus-servers && viewItem =~ /_canEdit_/"
         },
         {
+          "command": "magnusLocal.pullToWorkspace",
+          "group": "section3@1",
+          "when": "view == magnus-servers && viewItem =~ /_canPullLocal_/"
+        },
+        {
+          "command": "magnusLocal.openPulledWorkspace",
+          "group": "section3@1",
+          "when": "view == magnus-servers && viewItem =~ /_isPulledLocal_/"
+        },
+        {
+          "command": "magnusLocal.revealPulledWorkspace",
+          "group": "section3@2",
+          "when": "view == magnus-servers && viewItem =~ /_isPulledLocal_/"
+        },
+        {
+          "command": "magnusLocal.unlinkPulledWorkspace",
+          "group": "section3@3",
+          "when": "view == magnus-servers && viewItem =~ /_isPulledLocal_/"
+        },
+        {
           "command": "magnus.refreshFolder",
           "group": "section8",
           "when": "view == magnus-servers && viewItem =~ /^server_/"
@@ -266,6 +446,11 @@
           "command": "magnus.refreshFolder",
           "group": "section8",
           "when": "view == magnus-servers && viewItem =~ /^folder_/"
+        },
+        {
+          "command": "magnusLocal.reauthenticateServer",
+          "group": "section8",
+          "when": "view == magnus-servers && viewItem =~ /^server_/"
         },
         {
           "command": "magnus.removeServer",
@@ -277,22 +462,178 @@
           "group": "section9",
           "when": "view == magnus-servers && viewItem =~ /_canDelete_/"
         }
+      ],
+      "scm/title": [
+        {
+          "command": "magnusLocal.pushChanges",
+          "group": "navigation@1",
+          "when": "scmProvider == magnusLocal"
+        },
+        {
+          "command": "magnusLocal.fetchFromServer",
+          "group": "navigation@2",
+          "when": "scmProvider == magnusLocal"
+        },
+        {
+          "command": "magnusLocal.deployApp",
+          "group": "navigation@3",
+          "when": "scmProvider == magnusLocal && magnusLocal:canDeploy"
+        },
+        {
+          "command": "magnusLocal.compileTheme",
+          "group": "navigation@3",
+          "title": "Compile Theme",
+          "when": "scmProvider == magnusLocal && magnusLocal:canCompileTheme"
+        },
+        {
+          "command": "magnusLocal.editSelection",
+          "group": "navigation@9",
+          "when": "scmProvider == magnusLocal"
+        },
+        {
+          "command": "magnusLocal.hydrateWorkspace",
+          "when": "scmProvider == magnusLocalUnhydrated && !magnusLocal:serverDisconnected",
+          "group": "navigation"
+        },
+        {
+          "command": "magnusLocal.connectWorkspaceServer",
+          "when": "scmProvider == magnusLocalUnhydrated && magnusLocal:serverDisconnected",
+          "group": "navigation"
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "magnusLocal.pushChanges",
+          "group": "inline",
+          "when": "scmProvider == magnusLocal && scmResourceGroup == changes"
+        },
+        {
+          "command": "magnusLocal.discardChange",
+          "group": "inline",
+          "when": "scmProvider == magnusLocal && scmResourceGroup == changes"
+        },
+        {
+          "command": "magnusLocal.pushChanges",
+          "group": "1_modification",
+          "when": "scmProvider == magnusLocal && scmResourceGroup == changes"
+        },
+        {
+          "command": "magnusLocal.discardChange",
+          "group": "1_modification",
+          "when": "scmProvider == magnusLocal && scmResourceGroup == changes"
+        },
+        {
+          "command": "magnusLocal.pullFromServer",
+          "group": "inline",
+          "when": "scmProvider == magnusLocal && scmResourceGroup == incoming"
+        },
+        {
+          "command": "magnusLocal.pullFromServer",
+          "group": "1_modification",
+          "when": "scmProvider == magnusLocal && scmResourceGroup == incoming"
+        }
       ]
-    }
+    },
+    "configuration": {
+      "title": "Magnus",
+      "properties": {
+        "magnusLocal.pollIntervalSeconds": {
+          "type": "number",
+          "default": 60,
+          "minimum": 0,
+          "description": "How often (in seconds) to check whether anyone else changed the content in a pulled workspace. The check is one lightweight query per workspace and does not read file content. Set to 0 to disable. Values from 1 to 14 are treated as 15."
+        },
+        "magnusLocal.pullRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Optional starting directory for the Pull dialog. When set, the folder picker opens here. Leave blank to use the OS picker's default (typically the last-used directory)."
+        },
+        "magnusLocal.allowMultiAppWorkspace": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow pulling multiple apps into the same VS Code workspace. When true, the Pull dialog offers an 'Add to Current Workspace' option. Not recommended — AI tools (Claude, Cursor) will be able to read across all pulled apps in one workspace."
+        }
+      }
+    },
+    "walkthroughs": [
+      {
+        "id": "magnus.gettingStarted",
+        "title": "Get Started with Magnus",
+        "description": "Connect to your Rock RMS server and start editing, in Cloud mode or in Local mode.",
+        "steps": [
+          {
+            "id": "magnus.addServer",
+            "title": "Add your first server",
+            "description": "Add a Rock RMS server. You'll need its URL, a username, and a password.\n\nAfter connecting, update the Magnus plugin settings on your server to choose which content types appear in the tree.\n[Add Server](command:magnus.addServer)",
+            "media": {
+              "markdown": "resources/walkthrough/sidebar.md"
+            },
+            "completionEvents": [
+              "onCommand:magnus.addServer",
+              "onContext:!magnus:noServers"
+            ]
+          },
+          {
+            "id": "magnus.exploreTree",
+            "title": "Explore the server tree",
+            "description": "Open the **Magnus** icon in the activity bar. Your server appears as a folder tree of editable entities: Mobile Apps, AI Skills, Website Themes, Persisted Datasets, Lava Shortcodes, and more.\n[Show Magnus view](command:workbench.view.extension.magnus)",
+            "media": {
+              "markdown": "resources/walkthrough/sidebar.md"
+            },
+            "completionEvents": [
+              "onCommand:workbench.view.extension.magnus"
+            ]
+          },
+          {
+            "id": "magnus.editInCloud",
+            "title": "Edit files in Cloud mode",
+            "description": "Click any file in the **Magnus** view to open it. Magnus streams the file from the server; saving writes it straight back. Nothing is stored on disk and there is no sync step.",
+            "media": {
+              "markdown": "resources/walkthrough/sidebar.md"
+            }
+          },
+          {
+            "id": "magnus.pullToLocal",
+            "title": "Edit files in Local mode",
+            "description": "Right-click an entity that supports local editing and choose **Pull to Local Workspace…**. Magnus writes the files to a folder you pick and opens it in a new VS Code window, the same as **File → Open Folder…**.\n\nFrom there you edit through VS Code's **Explorer**, the **Magnus** view, an AI assistant, or anything else that reads the open folder. A pulled entity keeps its existing icon with a small down-arrow added, and its right-click menu becomes **Open Local Workspace**.",
+            "media": {
+              "markdown": "resources/walkthrough/sidebar.md"
+            }
+          },
+          {
+            "id": "magnus.reviewChanges",
+            "title": "Review changes in Source Control",
+            "description": "Show the **Source Control** panel from its icon in the activity bar, or via **View → Source Control** if it's hidden. It works like Git: every edit appears under **Changes** with a diff against the last-synced server bytes. Server-side edits made by other users land under **Incoming** when you click **Fetch from Server**.",
+            "media": {
+              "markdown": "resources/walkthrough/sidebar.md"
+            }
+          },
+          {
+            "id": "magnus.pushBack",
+            "title": "Push changes back to the server",
+            "description": "Click **Push All Changes** in the Source Control title bar to upload every change, or the cloud-upload icon next to a single change. Magnus refreshes baselines and clears the Changes group. Mobile apps and themes then offer **Deploy** to compile.",
+            "media": {
+              "markdown": "resources/walkthrough/sidebar.md"
+            }
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "webpack --mode production",
     "build": "webpack --mode development",
     "watch": "tsc -p ./ --watch",
-    "package": "vsce package",
-    "pretest": "npm run build && npm run lint",
+    "package": "vsce package --out ..",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "npm run build && npm run lint && node ./out/test/runTest.js"
   },
   "devDependencies": {
     "@types/glob": "^7.2.0",
     "@types/mocha": "^9.1.1",
-    "@types/node": "16.x",
+    "@types/node": "^18.19.130",
     "@types/vscode": "^1.69.0",
     "@typescript-eslint/eslint-plugin": "^5.31.0",
     "@typescript-eslint/parser": "^5.31.0",
@@ -303,6 +644,7 @@
     "node-loader": "^2.0.0",
     "ts-loader": "^9.3.1",
     "typescript": "^4.7.4",
+    "vitest": "^1.6.1",
     "vsce": "^2.11.0",
     "webpack": "^5.74.0",
     "webpack-cli": "^4.10.0"

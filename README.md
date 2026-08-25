@@ -12,6 +12,16 @@ Magnus allows you to directly edit content hosted in Rock. This is especially us
     <img width="799" src="docs/sample.png">
 </p>
 
+# Editing Modes
+
+Magnus supports two ways of editing Rock content:
+
+**Cloud mode** is the original workflow, stable since 1.0. Right-click a Rock content node in the Magnus tree to edit it inline; changes save straight to the server through a virtual filesystem.
+
+**Local mode** is a new beta workflow added in 1.1.0. Pull a mobile app to a real folder on disk so AI coding tools (Claude Code, Cursor, Copilot, etc.) can read and edit it as ordinary files. Changes are tracked in a Source Control panel with explicit Push and Fetch actions; there is no automatic background sync. Currently scoped to mobile apps only.
+
+To pull an app to local, right-click a mobile app in the tree and choose **Pull to Local Workspace…**. See the [Change Log](CHANGELOG.md) for the full feature list, settings, and current limitations.
+
 # Getting Started
 
 To get started you’ll need to:

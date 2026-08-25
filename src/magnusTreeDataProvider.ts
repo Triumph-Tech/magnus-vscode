@@ -3,6 +3,8 @@ import * as vscode from "vscode";
 import { Api } from "./api";
 import { Events } from "./events";
 import { IconCache } from "./iconCache";
+import { isAISkillsCollectionNodeUri, isLocalModePullableUri, isMobileAppNodeUri, isThemeNodeUri } from "./pullHelpers";
+import { PullRegistry } from "./pullRegistry";
 
 /** The custom scheme used in building URIs for Visual Studio Code. */
 const customUriSchemeInsecure = "ttmagnus";
@@ -12,6 +14,8 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
     private context: vscode.ExtensionContext;
     private events?: Events;
     private api: Api;
+    private pullRegistry: PullRegistry;
+    private pullRegistryListener: vscode.Disposable;
     private iconCache: IconCache = new IconCache();
     private didChangeTreeData: vscode.EventEmitter<ITreeNode | undefined> = new vscode.EventEmitter<ITreeNode | undefined>();
     private treeNodeTable: Record<string, ITreeNode> = {};
@@ -19,10 +23,11 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
     // #region Constructors
 
-    public constructor(context: vscode.ExtensionContext, events: Events, api: Api) {
+    public constructor(context: vscode.ExtensionContext, events: Events, api: Api, pullRegistry: PullRegistry) {
         this.context = context;
         this.events = events;
         this.api = api;
+        this.pullRegistry = pullRegistry;
 
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(customUriSchemeInsecure, this));
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(customUriSchemeSecure, this));
@@ -43,12 +48,20 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         this.events.onRemoteView(this.onRemoteView.bind(this));
         this.events.onRemoteEdit(this.onRemoteEdit.bind(this));
 
+        // Pulled-state changes (a new pull, an unlink) repaint the tree so
+        // the "Pull to Local…" / "Open Local Workspace" right-click items
+        // and the "↓ pulled" description toggle in real time.
+        this.pullRegistryListener = pullRegistry.onDidChange(() => {
+            this.didChangeTreeData.fire(undefined);
+        });
+
         this.initNoServersContext();
     }
 
     /** @inheritdoc */
     public dispose(): void {
         this.events = undefined;
+        this.pullRegistryListener.dispose();
     }
 
     // #endregion
@@ -60,15 +73,48 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
     /** @inheritdoc */
     public async getTreeItem(element: ITreeNode): Promise<vscode.TreeItem> {
-        const iconPath = await this.getTreeItemIconPair(element.serverUrl, element.itemDescriptor.icon, element.itemDescriptor.iconDark);
-
         this.treeNodeTable[element.resource.toString()] = element;
+
+        const pulled = this.findPulledWorkspace(element);
+        // Mutate the node so other surfaces (right-click handlers, the
+        // Pulled Workspaces commands) can read pulledWorkspacePath without
+        // re-querying the registry.
+        element.pulledWorkspacePath = pulled?.localPath;
+
+        // Pulled nodes for certain VFS types show a distinct icon instead of
+        // the "↓ pulled" text label. The server sends a full URL like:
+        //   …/Assets/Icons/themes-theme.svg
+        // For each supported type we swap the filename to its local variant
+        // when the node is pulled into a local workspace.
+        const isPulledTheme = !!pulled && isThemeNodeUri(element.itemDescriptor.uri);
+        const isPulledAISkills = !!pulled && isAISkillsCollectionNodeUri(element.itemDescriptor.uri);
+        const isPulledMobileApp = !!pulled && isMobileAppNodeUri(element.itemDescriptor.uri);
+        const isPulledLocalIcon = isPulledTheme || isPulledAISkills || isPulledMobileApp;
+
+        let effectiveIcon = element.itemDescriptor.icon;
+        if (isPulledTheme) {
+            effectiveIcon = (effectiveIcon ?? "").replace(/themes-theme\.svg(\b|$)/, "themes-theme-local.svg");
+        }
+        else if (isPulledAISkills) {
+            effectiveIcon = (effectiveIcon ?? "").replace(/aiskills\.svg(\b|$)/, "aiskills-local.svg");
+        }
+        else if (isPulledMobileApp) {
+            effectiveIcon = (effectiveIcon ?? "").replace(/mobileapps-app\.svg(\b|$)/, "mobileapps-app-local.svg");
+        }
+
+        const iconPath = await this.getTreeItemIconPair(element.serverUrl, effectiveIcon, element.itemDescriptor.iconDark);
 
         const node: vscode.TreeItem = {
             resourceUri: element.resource,
             collapsibleState: element.itemDescriptor.isFolder ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
             label: element.itemDescriptor.displayName,
-            tooltip: element.itemDescriptor.tooltip ?? undefined,
+            // Pulled-state hint shown after the label in dimmed text for
+            // nodes that do not have a dedicated local icon. Nodes with a
+            // local icon variant use that instead of the text badge.
+            description: (pulled && !isPulledLocalIcon) ? "↓ pulled" : undefined,
+            tooltip: pulled
+                ? `${element.itemDescriptor.tooltip ?? element.itemDescriptor.displayName}\n\nPulled to: ${pulled.localPath}`
+                : (element.itemDescriptor.tooltip ?? undefined),
             iconPath,
             command: element.itemDescriptor.isFolder ? void 0 : {
                 command: "vscode.open",
@@ -93,10 +139,28 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         return node;
     }
 
+    /**
+     * Look up an existing pulled workspace for this tree node, if any.
+     * Match key is `(serverUrl, descriptor.uri)` — the same pair stored by
+     * the pull command. Returns `undefined` for server nodes (we never
+     * pull a whole server) and for nodes with no URI.
+     */
+    private findPulledWorkspace(node: ITreeNode): ReturnType<PullRegistry["list"]>[number] | undefined {
+        if (node.isServer) {
+            return undefined;
+        }
+        if (!node.itemDescriptor.uri) {
+            return undefined;
+        }
+        return this.pullRegistry
+            .list()
+            .find(w => w.serverUrl === node.serverUrl && w.rootUri === node.itemDescriptor.uri);
+    }
+
     /** @inheritdoc */
     public async getChildren(element?: ITreeNode | undefined): Promise<ITreeNode[]> {
         if (!element) {
-            return await this.getServerNodes();
+            return this.getServerNodes();
         }
         else if (!element.itemDescriptor.uri && !element.isServer) {
             return [];
@@ -104,12 +168,24 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
         else {
             const childItemDescriptors = await this.api.getChildItems(element.serverUrl, element.itemDescriptor.uri ?? "");
 
+            // Local-mode bookkeeping: when the parent of these children IS a
+            // server (i.e. element is a server), each child is a top-level
+            // group like "Mobile Apps". Children of THAT group get the group
+            // name as `parentGroupName`, used by the pull command to lay out
+            // disk paths like `<server>/Mobile Apps/My App/...`. For deeper
+            // descendants we copy the parent's parentGroupName forward so a
+            // sub-folder under an app still knows its top-level group.
+            const childParentGroupName = element.isServer
+                ? undefined
+                : (element.parentGroupName ?? element.itemDescriptor.displayName);
+
             const items = childItemDescriptors.map(item => {
                 return {
                     serverUrl: element.serverUrl,
                     resource: this.getResourceFromWebUrl(element.serverUrl, item.uri),
                     itemDescriptor: item,
-                    isServer: false
+                    isServer: false,
+                    parentGroupName: childParentGroupName
                 };
             });
 
@@ -139,23 +215,23 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
     /**
      * Gets the nodes to use for the server list.
      *
+     * Built synchronously from the saved `KnownServers` list, with no
+     * network round-trips. We used to call `GetServer` per server here to obtain a
+     * descriptor, but the server currently returns only a placeholder icon
+     * string and no other useful fields, so the call blocked initial tree
+     * rendering for no payoff (visibly slow with many servers). If/when the
+     * server starts returning real per-server tooltips or menu URIs, re-add
+     * the fetch lazily and repaint individual rows via `didChangeTreeData`.
+     *
      * @returns An array of tree node items.
      */
-    private async getServerNodes(): Promise<ITreeNode[]> {
+    private getServerNodes(): ITreeNode[] {
         const nodes: ITreeNode[] = [];
         const servers = this.context.globalState.get<string[]>("KnownServers", []);
 
         for (const server of servers) {
             try {
                 const uri = vscode.Uri.parse(server);
-                let descriptor: IItemDescriptor | null = null;
-
-                try {
-                    descriptor = await this.api.getServerDescriptor(server);
-                }
-                catch (e) {
-                    console.log("Failed to get server descriptor.", e);
-                }
 
                 nodes.push({
                     serverUrl: server,
@@ -166,13 +242,10 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                     }),
                     itemDescriptor: {
                         displayName: uri.authority,
-                        tooltip: descriptor?.tooltip || uri.authority,
+                        tooltip: uri.authority,
                         isFolder: true,
-                        icon: descriptor?.icon || "$(server)",
-                        iconDark: descriptor?.iconDark || "$(server)",
-                        buildUri: descriptor?.buildUri,
-                        uploadFileUri: descriptor?.uploadFileUri,
-                        uploadFolderUri: descriptor?.uploadFolderUri,
+                        icon: "$(server)",
+                        iconDark: "$(server)",
                         uri: ""
                     }
                 });
@@ -241,6 +314,29 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         if (node.itemDescriptor.buildUri) {
             context = `${context}canBuild_`;
+        }
+
+        // Theme nodes get an additional marker so menus can show
+        // "Compile Theme" instead of the default "Deploy" label. The
+        // underlying command (`magnus.buildUrl`) is unchanged; only the
+        // per-menu title differs based on this marker.
+        if (isThemeNodeUri(node.itemDescriptor.uri)) {
+            context = `${context}isTheme_`;
+        }
+
+        // Local-mode markers. Scoped to root nodes for content types
+        // that local mode supports today: mobile-app roots
+        // (`/mobileapps/app/<id>`), the AI Skills collection root
+        // (`/aiskills/`), and theme roots (`/themes/theme/<Name>`).
+        // Sub-folders and unsupported content types don't get the
+        // marker — see `isLocalModePullableUri` for the current allow-list.
+        if (
+            !node.isServer
+            && node.itemDescriptor.isFolder
+            && isLocalModePullableUri(node.itemDescriptor.uri)
+        ) {
+            const pulled = this.findPulledWorkspace(node);
+            context = `${context}${pulled ? "isPulledLocal_" : "canPullLocal_"}`;
         }
 
         return context;
@@ -398,10 +494,22 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
 
         const buildUrl = this.getFullyQualifiedUrl(item.serverUrl, item.itemDescriptor.buildUri);
 
+        // Themes call this "Compile" rather than "Deploy" — the action is
+        // a synchronous LESS recompile of the theme's Styles/ folder, not
+        // a mobile-app push to a CDN. Switching the labels here keeps the
+        // command id stable while the user-visible language tracks the
+        // content type. The actionable result (responseMessage from the
+        // server) is independent of which verb we used to launch.
+        const isTheme = isThemeNodeUri(item.itemDescriptor.uri);
+        const title = isTheme
+            ? `Compiling ${item.itemDescriptor.displayName}`
+            : `Deploying ${item.itemDescriptor.displayName}`;
+        const failureFallback = isTheme ? "Compile failed." : "Deploy failed.";
+
         const options: vscode.ProgressOptions = {
             cancellable: false,
             location: vscode.ProgressLocation.Notification,
-            title: `Building ${item.itemDescriptor.displayName}`
+            title
         };
 
         vscode.window.withProgress(options, async progress => {
@@ -418,7 +526,7 @@ export class MagnusTreeDataProvider implements vscode.Disposable, vscode.TreeDat
                         message: "Complete"
                     });
 
-                    vscode.window.showErrorMessage(response.responseMessage || "Build failed.");
+                    vscode.window.showErrorMessage(response.responseMessage || failureFallback);
                 }
 
                 await new Promise(resolve => setTimeout(resolve, 2000));
