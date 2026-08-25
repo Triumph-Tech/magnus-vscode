@@ -1,10 +1,10 @@
 name: CI Package
 
 on:
-  push:
-    branches: [ "main" ]
-
-  # Allows you to run this workflow manually from the Actions tab
+  # Manual only while the 1.2.0 work is prepared in the open repository.
+  # Restore the push trigger when the release is ready:
+  #   push:
+  #     branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
