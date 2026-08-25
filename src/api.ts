@@ -434,7 +434,7 @@ export class Api {
      */
     public createNewFile(url: string, filename: string): Promise<ActionResponse> {
         return this.actionUrl("POST", url, filename, request => {
-            request.headers!.contentType = "text/plain";
+            request.headers!["Content-Type"] = "text/plain";
         });
     }
 
@@ -446,7 +446,7 @@ export class Api {
      */
     public createNewFolder(url: string, name: string): Promise<ActionResponse> {
         return this.actionUrl("POST", url, name, request => {
-            request.headers!.contentType = "text/plain";
+            request.headers!["Content-Type"] = "text/plain";
         });
     }
 

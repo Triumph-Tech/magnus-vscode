@@ -101,7 +101,7 @@ export class Commands implements vscode.Disposable {
             return;
         }
 
-        if (!this.api.login(serverUrl, username, password)) {
+        if (!await this.api.login(serverUrl, username, password)) {
             await vscode.window.showErrorMessage("Unable to login. Please check server URL and credentials and try again.");
             return;
         }
