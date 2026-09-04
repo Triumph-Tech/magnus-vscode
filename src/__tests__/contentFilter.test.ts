@@ -27,6 +27,12 @@ describe("shouldSkipContentUri", () => {
             "/api/FileContent/block-handler/42/content.lava",
             "/api/FileContent/block-handler/42/template.lava",
 
+            // Generic block attribute files (plugin 2.4.0+): one per Code
+            // Editor / Block Template attribute, named {AttributeKey}.{ext}.
+            "/api/FileContent/block-handler/42/EventTemplate.lava",
+            "/api/FileContent/block-handler/42/AdditionalCss.css",
+            "/api/FileContent/block-handler/42/Query.sql",
+
             // Page metadata — one file per page, kept.
             "/api/FileContent/my-app/page-metadata/5/metadata.lava",
 
